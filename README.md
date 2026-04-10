@@ -21,6 +21,17 @@ Instead of relying on unstable backend caching, Voca pushes the concept of an **
 
 ---
 
+## 🔄 User Workflow
+
+When using Voca, interactions follow a clear, predictable flow that ensures control and safety over automated computer interactions. 
+
+1. **Input Generation:** You interact through the browser via the microphone, raw text commands, or by uploading existing `.wav` files directly.
+2. **Analysis and Extraction:** The STT engine transcribes your audio, and the intent classifier determines exactly what code should be generated or what files should be modified.
+3. **Execution Block & Human-In-The-Loop:** If the requested command triggers any write operations to your local hard drive (e.g. `write_code` or `create_file`), Voca actively halts execution. The UI renders a red/green confirmation prompt alerting you identically to what files the AI is about to modify.
+4. **Execution & Auditing:** Upon clicking "Confirm", the pipeline instantly resumes, tools are dispatched, and the exact timestamped sequence is locked into the **Session History** panel indefinitely for auditing cross-checks.
+
+---
+
 ## ⚙ Hardware Workarounds & Design Constraints
 
 Operating Local LLMs alongside localized Speech-To-Text processing engines presents rigid hardware execution limits. The following modifications were integrated to keep overhead incredibly fast:
