@@ -99,12 +99,9 @@ async def process_audio(audio: UploadFile = File(...)):
     except Exception as e:
         logger.error("❌ Unhandled error in /api/process: %s", e, exc_info=True)
         return {
-            "transcript": "",
-            "results": [{
-                "intent": {},
-                "action": "error",
-                "result": f"❌ Error: {e}",
-            }]
+            "error": True,
+            "stage": "api",
+            "message": str(e)
         }
     finally:
         try:
@@ -132,12 +129,9 @@ async def process_text_api(request: TextRequest):
     except Exception as e:
         logger.error("❌ Unhandled error in /api/process_text: %s", e, exc_info=True)
         return {
-            "transcript": request.text,
-            "results": [{
-                "intent": {},
-                "action": "error",
-                "result": f"❌ Error: {e}",
-            }]
+            "error": True,
+            "stage": "api",
+            "message": str(e)
         }
 
 class ConfirmRequest(BaseModel):
@@ -158,11 +152,9 @@ async def confirm_intents_api(request: ConfirmRequest):
     except Exception as e:
         logger.error("❌ Unhandled error in /api/confirm_intents: %s", e, exc_info=True)
         return {
-            "results": [{
-                "intent": {},
-                "action": "error",
-                "result": f"❌ Error: {e}",
-            }]
+            "error": True,
+            "stage": "api",
+            "message": str(e)
         }
 
 if __name__ == "__main__":

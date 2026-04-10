@@ -7,6 +7,9 @@ Parses transcribed text into a structured JSON intent object with retry logic.
 import json
 import logging
 import time
+import httpx
+
+from errors import PipelineError
 
 logger = logging.getLogger(__name__)
 
@@ -59,14 +62,18 @@ def classify_intent(transcript: str) -> list:
     try:
         logger.info("   Sending transcript to %s (attempt 1)…", OLLAMA_MODEL)
         t0 = time.perf_counter()
-        response = ollama.chat(
-            model=OLLAMA_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {"role": "user", "content": transcript},
-            ],
-            format="json",
-        )
+        try:
+            response = ollama.chat(
+                model=OLLAMA_MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "user", "content": transcript},
+                ],
+                format="json",
+            )
+        except (httpx.ConnectError, ConnectionError) as e:
+            raise PipelineError("intent", "Ollama is not running. Start it with `ollama serve`.")
+
         elapsed = time.perf_counter() - t0
         raw = response["message"]["content"]
         logger.info("   LLM responded in %.2fs: %s", elapsed, raw[:200])
@@ -84,17 +91,20 @@ def classify_intent(transcript: str) -> list:
 
     # --- Retry with stricter prompt ---
     try:
-        response = ollama.chat(
-            model=OLLAMA_MODEL,
-            messages=[
-                {"role": "system", "content": SYSTEM_PROMPT},
-                {
-                    "role": "user",
-                    "content": STRICT_RETRY_PROMPT.format(transcript=transcript),
-                },
-            ],
-            format="json",
-        )
+        try:
+            response = ollama.chat(
+                model=OLLAMA_MODEL,
+                messages=[
+                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {
+                        "role": "user",
+                        "content": STRICT_RETRY_PROMPT.format(transcript=transcript),
+                    },
+                ],
+                format="json",
+            )
+        except (httpx.ConnectError, ConnectionError) as e:
+            raise PipelineError("intent", "Ollama is not running. Start it with `ollama serve`.")
 
         result = json.loads(response["message"]["content"])
         if not isinstance(result, list):
@@ -106,8 +116,8 @@ def classify_intent(transcript: str) -> list:
         logger.info("   ✅ Intents parsed on retry: %d actions", len(result))
         return result
     except Exception as e:
-        logger.error("   ❌ Retry failed (%s). Returning unknown intent.", e)
-        return [{"intent": "unknown", "raw": transcript}]
+        logger.error("   ❌ Retry failed (%s). Routing to fallback.", e)
+        return [{"intent": "general_chat", "message": transcript}]
 
 
 # ---------------------------------------------------------------------------

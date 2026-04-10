@@ -11,6 +11,7 @@ import time
 
 logger = logging.getLogger(__name__)
 from faster_whisper import WhisperModel
+from errors import PipelineError
 
 # ---------------------------------------------------------------------------
 # Model loading (once, at import time)
@@ -51,6 +52,13 @@ def transcribe(audio_path: str) -> dict:
     logger.info("   Transcribing: %s", audio_path)
     t0 = time.perf_counter()
     segments, info = _model.transcribe(audio_path, beam_size=5)
+    segments = list(segments)
+
+    if not segments:
+        raise PipelineError("stt", "No speech detected. Please try again.")
+
+    # Calculate mean logprob over segments
+    mean_logprob = sum(segment.avg_logprob for segment in segments) / len(segments)
 
     # Collect all segment texts
     full_text = " ".join(segment.text for segment in segments)
@@ -60,8 +68,12 @@ def transcribe(audio_path: str) -> dict:
     full_text = full_text.strip()
     full_text = re.sub(r"\s+", " ", full_text)
 
+    if not full_text:
+        raise PipelineError("stt", "No speech detected. Please try again.")
+
     return {
         "text": full_text,
         "language": info.language,
         "language_probability": round(info.language_probability, 3),
+        "low_confidence": mean_logprob < -0.8,
     }

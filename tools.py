@@ -7,11 +7,13 @@ The safe_path() utility enforces this boundary.
 
 import logging
 import os
+import httpx
 
 logger = logging.getLogger(__name__)
 from pathlib import Path
 
 import ollama
+from errors import PipelineError
 
 # Resolve the output directory once at module level
 OUTPUT_DIR = Path(__file__).parent / "output"
@@ -55,32 +57,45 @@ def safe_path(filename: str) -> Path:
 # Tool functions
 # ---------------------------------------------------------------------------
 
+def _chat(*args, **kwargs):
+    """Wrapper to catch Ollama connection errors."""
+    try:
+        return ollama.chat(*args, **kwargs)
+    except (httpx.ConnectError, ConnectionError) as e:
+        raise PipelineError("tool", "Ollama is not running. Start it with `ollama serve`.")
+
 def create_file(filename: str) -> str:
     """Create an empty file (or directory if name ends with '/') in output/."""
     logger.info("   📁 create_file: %s", filename)
     path = safe_path(filename)
 
-    if filename.endswith("/"):
-        path.mkdir(parents=True, exist_ok=True)
-        return f"📁 Created directory: {path.relative_to(Path(__file__).parent)}"
-    else:
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.touch()
-        return f"📄 Created file: {path.relative_to(Path(__file__).parent)}"
+    try:
+        if filename.endswith("/"):
+            path.mkdir(parents=True, exist_ok=True)
+            return f"📁 Created directory: {path.relative_to(Path(__file__).parent)}"
+        else:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.touch()
+            return f"📄 Created file: {path.relative_to(Path(__file__).parent)}"
+    except OSError as e:
+        raise PipelineError("tool", f"OS file permission error: {e}")
 
 
 def write_code(filename: str, language: str, description: str) -> str:
     """Generate code via Ollama and write it to output/<filename>."""
     logger.info("   💻 write_code: %s (%s) — %s", filename, language, description[:80])
     path = safe_path(filename)
-    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as e:
+        raise PipelineError("tool", f"OS file permission error: {e}")
 
     prompt = (
         f"Write {language} code that {description}. "
         "Respond with raw code only — no markdown fences, no explanations."
     )
 
-    response = ollama.chat(
+    response = _chat(
         model=OLLAMA_MODEL,
         messages=[
             {"role": "system", "content": "You are a code generator. Output raw code only."},
@@ -100,7 +115,11 @@ def write_code(filename: str, language: str, description: str) -> str:
             lines = lines[1:]
         code = "\n".join(lines)
 
-    path.write_text(code, encoding="utf-8")
+    try:
+        path.write_text(code, encoding="utf-8")
+    except OSError as e:
+        raise PipelineError("tool", f"OS file permission error: {e}")
+
     logger.info("   ✅ Code written to %s (%d chars)", path, len(code))
     return code
 
@@ -108,7 +127,7 @@ def write_code(filename: str, language: str, description: str) -> str:
 def summarize(content: str) -> str:
     """Summarise the given content using Ollama."""
     logger.info("   📄 summarize: %d chars of content", len(content))
-    response = ollama.chat(
+    response = _chat(
         model=OLLAMA_MODEL,
         messages=[
             {
@@ -127,7 +146,7 @@ def summarize(content: str) -> str:
 def general_chat(message: str) -> str:
     """Handle general conversation that has no actionable intent."""
     logger.info("   💬 general_chat: %s", message[:80])
-    response = ollama.chat(
+    response = _chat(
         model=OLLAMA_MODEL,
         messages=[
             {
@@ -161,7 +180,7 @@ def dispatch(intent_obj: dict) -> str:
 
     if handler is None:
         logger.warning("   Unknown intent: %s", intent_key)
-        return f"⚠️ Unknown intent: {intent_key!r}"
+        raise PipelineError("tool", f"Intent '{intent_key}' is not supported. Try rephrasing.")
 
     logger.info("   Dispatching to tool: %s", intent_key)
     return handler(intent_obj)

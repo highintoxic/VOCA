@@ -184,10 +184,9 @@
     } catch (err) {
       console.error("Text Pipeline error:", err);
       appendAgentMessage({
-        results: [{
-          action: "error",
-          result: `❌ Error: ${err.message}`
-        }]
+        error: true,
+        stage: "framework",
+        message: err.message
       });
     } finally {
       clearInterval(stageInterval);
@@ -228,16 +227,17 @@
       
       // Remove typing bubble briefly so User Bubble appears correctly before Agent Response
       removeTypingIndicator(typingEl);
-      appendUserMessage(data.transcript || "(Empty transcript)");
+      if (!data.error || data.stage !== "stt") {
+        appendUserMessage(data.transcript || "(Empty transcript)", data.low_confidence);
+      }
       appendAgentMessage(data);
 
     } catch (err) {
       console.error("Pipeline error:", err);
       appendAgentMessage({
-        results: [{
-          action: "error",
-          result: `❌ Error: ${err.message}`
-        }]
+        error: true,
+        stage: "framework",
+        message: err.message
       });
     } finally {
       clearInterval(stageInterval);
@@ -299,14 +299,23 @@
     }, 50);
   }
 
-  function appendUserMessage(text) {
+  function appendUserMessage(text, isLowConfidence=false) {
     const msgDiv = document.createElement("div");
     msgDiv.className = "message user";
+    let warning = "";
+    if (isLowConfidence) {
+        warning = `
+          <div class="warning-banner" style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(255, 170, 0, 0.1); border-left: 3px solid #ffaa00; border-radius: 4px; font-size: 0.85rem; color: #ffaa00;">
+            ⚠️ Low confidence — please verify transcript before running.
+          </div>
+        `;
+    }
     msgDiv.innerHTML = `
       <div class="avatar">👤</div>
       <div class="bubble">
         <p class="role-title">You</p>
         <div class="bubble-content">
+          ${warning}
           ${escapeHTML(text)}
         </div>
       </div>
@@ -316,11 +325,25 @@
   }
 
   function appendAgentMessage(data) {
-    const results = data.results || [];
-    
-    // Create elements dynamically to inject content safely
     const msgDiv = document.createElement("div");
     msgDiv.className = "message agent";
+
+    if (data.error) {
+      msgDiv.innerHTML = `
+        <div class="avatar" style="background: rgba(255, 60, 60, 0.1);">❌</div>
+        <div class="bubble error-bubble" style="border: 1px solid rgba(255, 60, 60, 0.3);">
+          <p class="role-title" style="color: #ff6b6b; font-weight: 600;">Pipeline Failed — Stage: ${escapeHTML(data.stage || 'unknown')}</p>
+          <div class="bubble-content" style="color: var(--text-primary); margin-top: 5px;">
+            ${escapeHTML(data.message || 'An unknown error occurred.')}
+          </div>
+        </div>
+      `;
+      chatHistory.appendChild(msgDiv);
+      scrollToBottom();
+      return;
+    }
+
+    const results = data.results || [];
     
     // Determine title block for Action
     const actionIcons = {
@@ -445,10 +468,9 @@
       console.error("Confirmation error:", err);
       removeTypingIndicator(typingEl);
       appendAgentMessage({
-        results: [{
-          action: "error",
-          result: `❌ Error: ${err.message}`
-        }]
+        error: true,
+        stage: "framework",
+        message: err.message
       });
     } finally {
       resetConfirmationState();
