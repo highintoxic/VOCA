@@ -21,6 +21,8 @@
   // --- State --------------------------------------------------------------
   let pendingIntents = [];
   let isAwaitingConfirmation = false;
+  let actionLogState = [];
+  let chatContextState = [];
   let mediaRecorder = null;
   let audioChunks = [];
   let isRecording = false;
@@ -174,11 +176,16 @@
       const response = await fetch("/api/process_text", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ text: text }),
+        body: JSON.stringify({ 
+          text: text,
+          action_log: actionLogState,
+          chat_context: chatContextState
+        }),
       });
 
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
+      syncState(data);
       appendAgentMessage(data);
 
     } catch (err) {
@@ -216,6 +223,10 @@
     try {
       const formData = new FormData();
       formData.append("audio", currentAudioBlob, currentFileName);
+      formData.append("state", JSON.stringify({
+        action_log: actionLogState,
+        chat_context: chatContextState
+      }));
 
       const response = await fetch("/api/process", {
         method: "POST",
@@ -224,6 +235,7 @@
 
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
+      syncState(data);
       
       // Remove typing bubble briefly so User Bubble appears correctly before Agent Response
       removeTypingIndicator(typingEl);
@@ -456,11 +468,16 @@
       const response = await fetch("/api/confirm_intents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ intents: currPending }),
+        body: JSON.stringify({ 
+          intents: currPending,
+          action_log: actionLogState,
+          chat_context: chatContextState
+        }),
       });
 
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
+      syncState(data);
       removeTypingIndicator(typingEl);
       appendAgentMessage(data); 
       
@@ -508,6 +525,58 @@
         '"': '&quot;'
       }[tag] || tag)
     );
+  }
+
+  // --- Session Memory State & UI ------------------------------------------
+
+  const clearSessionBtn = document.getElementById("clear-session-btn");
+  const historyCount = document.getElementById("history-count");
+  const historyTbody = document.getElementById("history-tbody");
+
+  if (clearSessionBtn) {
+    clearSessionBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      actionLogState = [];
+      chatContextState = [];
+      renderHistoryPanel();
+    });
+  }
+
+  function syncState(data) {
+    if (data.action_log) actionLogState = data.action_log;
+    if (data.chat_context) chatContextState = data.chat_context;
+    renderHistoryPanel();
+  }
+
+  function renderHistoryPanel() {
+    if (!historyCount || !historyTbody) return;
+    
+    historyCount.textContent = actionLogState.length;
+    
+    if (actionLogState.length === 0) {
+      historyTbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 1rem;">No actions recorded this session.</td></tr>`;
+      return;
+    }
+    
+    let html = "";
+    // Render in reverse chronological or just chronological?
+    // Let's keep it chronological (append at bottom)
+    actionLogState.forEach(item => {
+      const statusClass = item.status === "success" ? "success" : "error";
+      const statusText = item.status === "success" ? "Success" : "Failed";
+      html += `
+        <tr>
+          <td style="white-space: nowrap;">${escapeHTML(item.timestamp)}</td>
+          <td>${escapeHTML(item.transcript)}</td>
+          <td><span style="font-weight: 500; font-family: monospace;">${escapeHTML(item.intent)}</span></td>
+          <td>${escapeHTML(item.filename || "-")}</td>
+          <td><span class="status-badge ${statusClass}">${statusText}</span></td>
+        </tr>
+      `;
+    });
+    
+    historyTbody.innerHTML = html;
   }
 
 })();

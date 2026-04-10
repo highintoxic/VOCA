@@ -11,11 +11,25 @@ from stt import transcribe
 from intent import classify_intent
 from tools import dispatch
 from errors import PipelineError
+import datetime
 
 logger = logging.getLogger(__name__)
 
+def _log_action(action_log, intent_obj, transcript=""):
+    action = intent_obj.get("intent", "unknown")
+    if action in {"error", "unknown"}:
+        return
+    log_entry = {
+        "timestamp": datetime.datetime.now().strftime("%H:%M:%S"),
+        "transcript": transcript or "Confirmed action",
+        "intent": action,
+        "filename": intent_obj.get("filename", ""),
+        "status": "success"
+    }
+    action_log.append(log_entry)
 
-def run_pipeline(audio_input) -> dict:
+
+def run_pipeline(audio_input, action_log=None, chat_context=None) -> dict:
     """
     Execute the full voice-agent pipeline.
     """
@@ -25,6 +39,8 @@ def run_pipeline(audio_input) -> dict:
         "requires_confirmation": False,
         "confirmation_message": "",
         "pending_intents": [],
+        "action_log": action_log or [],
+        "chat_context": chat_context or [],
     }
 
     pipeline_start = time.perf_counter()
@@ -53,7 +69,7 @@ def run_pipeline(audio_input) -> dict:
         logger.info("─" * 40)
         logger.info("🧠 Stage 2: Intent Classification")
         t0 = time.perf_counter()
-        intent_array = classify_intent(result["transcript"])
+        intent_array = classify_intent(result["transcript"], result["action_log"])
         elapsed = time.perf_counter() - t0
         logger.info("   ⏱  Classification took %.2fs", elapsed)
 
@@ -70,7 +86,7 @@ def run_pipeline(audio_input) -> dict:
                 
             logger.info("   ▶ Executing action: %s", action)
             t0 = time.perf_counter()
-            tool_res = dispatch(intent_obj)
+            tool_res = dispatch(intent_obj, result["chat_context"])
             elapsed = time.perf_counter() - t0
             
             result["results"].append({
@@ -78,6 +94,7 @@ def run_pipeline(audio_input) -> dict:
                 "action": action,
                 "result": tool_res
             })
+            _log_action(result["action_log"], intent_obj, result["transcript"])
             logger.info("   ✅ Executed %s in %.2fs. Result preview: %s", action, elapsed, str(tool_res)[:100])
             
         if result["pending_intents"]:
@@ -106,7 +123,7 @@ def run_pipeline(audio_input) -> dict:
 
     return result
 
-def process_text_command(text_input: str) -> dict:
+def process_text_command(text_input: str, action_log=None, chat_context=None) -> dict:
     """
     Execute the pipeline starting directly from text (bypassing STT).
     """
@@ -116,6 +133,8 @@ def process_text_command(text_input: str) -> dict:
         "requires_confirmation": False,
         "confirmation_message": "",
         "pending_intents": [],
+        "action_log": action_log or [],
+        "chat_context": chat_context or [],
     }
 
     pipeline_start = time.perf_counter()
@@ -128,7 +147,7 @@ def process_text_command(text_input: str) -> dict:
         logger.info("─" * 40)
         logger.info("🧠 Stage 2: Intent Classification")
         t0 = time.perf_counter()
-        intent_array = classify_intent(result["transcript"])
+        intent_array = classify_intent(result["transcript"], result["action_log"])
         elapsed = time.perf_counter() - t0
         logger.info("   ⏱  Classification took %.2fs", elapsed)
 
@@ -145,7 +164,7 @@ def process_text_command(text_input: str) -> dict:
                 
             logger.info("   ▶ Executing action: %s", action)
             t0 = time.perf_counter()
-            tool_res = dispatch(intent_obj)
+            tool_res = dispatch(intent_obj, result["chat_context"])
             elapsed = time.perf_counter() - t0
             
             result["results"].append({
@@ -153,6 +172,7 @@ def process_text_command(text_input: str) -> dict:
                 "action": action,
                 "result": tool_res
             })
+            _log_action(result["action_log"], intent_obj, result["transcript"])
             logger.info("   ✅ Executed %s in %.2fs. Result preview: %s", action, elapsed, str(tool_res)[:100])
             
         if result["pending_intents"]:
@@ -181,12 +201,14 @@ def process_text_command(text_input: str) -> dict:
 
     return result
 
-def execute_intents(intent_array: list) -> dict:
+def execute_intents(intent_array: list, action_log=None, chat_context=None) -> dict:
     """
     Directly execute an array of intents. Used for Stage 2 confirmation.
     """
     result = {
         "results": [],
+        "action_log": action_log or [],
+        "chat_context": chat_context or [],
     }
     logger.info("═" * 50)
     logger.info("🚀 Executing Confirmed Intents (%d actions)", len(intent_array))
@@ -196,7 +218,7 @@ def execute_intents(intent_array: list) -> dict:
             action = intent_obj.get("intent", "unknown")
             logger.info("   ▶ Executing action: %s", action)
             t0 = time.perf_counter()
-            tool_res = dispatch(intent_obj)
+            tool_res = dispatch(intent_obj, result["chat_context"])
             elapsed = time.perf_counter() - t0
             
             result["results"].append({
@@ -204,6 +226,7 @@ def execute_intents(intent_array: list) -> dict:
                 "action": action,
                 "result": tool_res
             })
+            _log_action(result["action_log"], intent_obj)
             logger.info("   ✅ Executed %s in %.2fs", action, elapsed)
     except PipelineError as e:
         logger.error("   ❌ Pipeline Error [%s]: %s", e.stage, e.message)

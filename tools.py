@@ -81,7 +81,7 @@ def create_file(filename: str) -> str:
         raise PipelineError("tool", f"OS file permission error: {e}")
 
 
-def write_code(filename: str, language: str, description: str) -> str:
+def write_code(filename: str, language: str, description: str, chat_context: list) -> str:
     """Generate code via Ollama and write it to output/<filename>."""
     logger.info("   💻 write_code: %s (%s) — %s", filename, language, description[:80])
     path = safe_path(filename)
@@ -94,13 +94,15 @@ def write_code(filename: str, language: str, description: str) -> str:
         f"Write {language} code that {description}. "
         "Respond with raw code only — no markdown fences, no explanations."
     )
+    
+    messages = [{"role": "system", "content": "You are a code generator. Output raw code only."}]
+    if chat_context:
+        messages.extend(chat_context)
+    messages.append({"role": "user", "content": prompt})
 
     response = _chat(
         model=OLLAMA_MODEL,
-        messages=[
-            {"role": "system", "content": "You are a code generator. Output raw code only."},
-            {"role": "user", "content": prompt},
-        ],
+        messages=messages,
     )
 
     code = response["message"]["content"]
@@ -119,6 +121,11 @@ def write_code(filename: str, language: str, description: str) -> str:
         path.write_text(code, encoding="utf-8")
     except OSError as e:
         raise PipelineError("tool", f"OS file permission error: {e}")
+        
+    chat_context.append({"role": "user", "content": f"Write {language} code that {description} to {filename}"})
+    chat_context.append({"role": "assistant", "content": f"I have written the code to {filename} successfully."})
+    while len(chat_context) > 20:
+        chat_context.pop(0)
 
     logger.info("   ✅ Code written to %s (%d chars)", path, len(code))
     return code
@@ -143,20 +150,28 @@ def summarize(content: str) -> str:
     return response["message"]["content"]
 
 
-def general_chat(message: str) -> str:
+def general_chat(message: str, chat_context: list) -> str:
     """Handle general conversation that has no actionable intent."""
     logger.info("   💬 general_chat: %s", message[:80])
+    
+    messages = [{"role": "system", "content": "You are a helpful voice assistant. Be concise and friendly."}]
+    if chat_context:
+        messages.extend(chat_context)
+    messages.append({"role": "user", "content": message})
+    
     response = _chat(
         model=OLLAMA_MODEL,
-        messages=[
-            {
-                "role": "system",
-                "content": "You are a helpful voice assistant. Be concise and friendly.",
-            },
-            {"role": "user", "content": message},
-        ],
+        messages=messages,
     )
-    return response["message"]["content"]
+    
+    reply = response["message"]["content"]
+    
+    chat_context.append({"role": "user", "content": message})
+    chat_context.append({"role": "assistant", "content": reply})
+    while len(chat_context) > 20:
+        chat_context.pop(0)
+        
+    return reply
 
 
 # ---------------------------------------------------------------------------
@@ -164,17 +179,20 @@ def general_chat(message: str) -> str:
 # ---------------------------------------------------------------------------
 
 _TOOL_MAP = {
-    "create_file": lambda obj: create_file(obj["filename"]),
-    "write_code": lambda obj: write_code(
-        obj["filename"], obj["language"], obj["description"]
+    "create_file": lambda obj, ctx: create_file(obj["filename"]),
+    "write_code": lambda obj, ctx: write_code(
+        obj["filename"], obj["language"], obj["description"], ctx
     ),
-    "summarize": lambda obj: summarize(obj["content"]),
-    "general_chat": lambda obj: general_chat(obj["message"]),
+    "summarize": lambda obj, ctx: summarize(obj["content"]),
+    "general_chat": lambda obj, ctx: general_chat(obj["message"], ctx),
 }
 
 
-def dispatch(intent_obj: dict) -> str:
+def dispatch(intent_obj: dict, chat_context: list = None) -> str:
     """Route an intent object to the correct tool function."""
+    if chat_context is None:
+        chat_context = []
+        
     intent_key = intent_obj.get("intent")
     handler = _TOOL_MAP.get(intent_key)
 
@@ -183,4 +201,4 @@ def dispatch(intent_obj: dict) -> str:
         raise PipelineError("tool", f"Intent '{intent_key}' is not supported. Try rephrasing.")
 
     logger.info("   Dispatching to tool: %s", intent_key)
-    return handler(intent_obj)
+    return handler(intent_obj, chat_context)

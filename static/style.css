@@ -476,6 +476,113 @@ pre.json-block {
   to { opacity: 1; transform: translateY(0); }
 }
 
+/* --- Session History Panel (Memory) -------------------------------------- */
+.session-history-wrapper {
+  margin: 0 auto;
+  width: 100%;
+  max-width: 900px;
+  padding: 0 1rem;
+  box-sizing: border-box;
+}
+
+.session-history-panel {
+  background: var(--surface-light);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  margin-bottom: 1rem;
+  overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.3s ease;
+}
+
+.session-history-summary {
+  padding: 0.8rem 1.2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  background: var(--surface);
+  border-bottom: 1px solid transparent;
+  user-select: none;
+}
+
+.session-history-panel[open] .session-history-summary {
+  border-bottom: 1px solid var(--border-color);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.summary-title {
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.clear-session-btn {
+  background: rgba(255, 60, 60, 0.1);
+  color: #ff6b6b;
+  border: 1px solid rgba(255, 60, 60, 0.3);
+  padding: 0.25rem 0.75rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.clear-session-btn:hover {
+  background: rgba(255, 60, 60, 0.2);
+  border-color: #ff6b6b;
+}
+
+.session-history-content {
+  padding: 1rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.table-responsive {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.history-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.85rem;
+  text-align: left;
+}
+
+.history-table th, .history-table td {
+  padding: 0.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.history-table th {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.history-table td {
+  color: var(--text-primary);
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 0.15rem 0.4rem;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.status-badge.success {
+  background: rgba(76, 175, 80, 0.15);
+  color: #4caf50;
+}
+
+.status-badge.error {
+  background: rgba(244, 67, 54, 0.15);
+  color: #f44336;
+}
+
 @media (max-width: 600px) {
   .input-modes { flex-direction: column; align-items: stretch; }
   .divider-or { display: none; }

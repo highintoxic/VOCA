@@ -14,7 +14,7 @@ import time
 
 import aiofiles
 import uvicorn
-from fastapi import FastAPI, UploadFile, File, Request
+from fastapi import FastAPI, UploadFile, File, Request, Form
 from fastapi.responses import HTMLResponse, FileResponse
 from pydantic import BaseModel
 
@@ -75,11 +75,21 @@ async def index():
 
 
 @app.post("/api/process")
-async def process_audio(audio: UploadFile = File(...)):
+async def process_audio(
+    audio: UploadFile = File(...),
+    state: str = Form('{"action_log": [], "chat_context": []}')
+):
     """
     Accept an uploaded audio file, run the full pipeline, and return
     structured JSON with transcript, intent, action, and result.
     """
+    try:
+        state_obj = json.loads(state)
+        action_log = state_obj.get("action_log", [])
+        chat_context = state_obj.get("chat_context", [])
+    except json.JSONDecodeError:
+        action_log = []
+        chat_context = []
     # Save the uploaded file to a temp location
     suffix = os.path.splitext(audio.filename or ".wav")[1]
     logger.info("📥 Received audio upload: %s (%s)", audio.filename, suffix)
@@ -93,7 +103,7 @@ async def process_audio(audio: UploadFile = File(...)):
         logger.info("   Saved to temp file: %s (%.1f KB)", tmp.name, size_kb)
 
         t0 = time.perf_counter()
-        result = run_pipeline(tmp.name)
+        result = run_pipeline(tmp.name, action_log, chat_context)
         elapsed = time.perf_counter() - t0
         logger.info("📤 Returning result (total API time: %.2fs)", elapsed)
     except Exception as e:
@@ -113,6 +123,8 @@ async def process_audio(audio: UploadFile = File(...)):
 
 class TextRequest(BaseModel):
     text: str
+    action_log: list = []
+    chat_context: list = []
 
 @app.post("/api/process_text")
 async def process_text_api(request: TextRequest):
@@ -122,7 +134,7 @@ async def process_text_api(request: TextRequest):
     from pipeline import process_text_command
     try:
         t0 = time.perf_counter()
-        result = process_text_command(request.text)
+        result = process_text_command(request.text, request.action_log, request.chat_context)
         elapsed = time.perf_counter() - t0
         logger.info("📤 Returning result (total API time: %.2fs)", elapsed)
         return result
@@ -136,6 +148,8 @@ async def process_text_api(request: TextRequest):
 
 class ConfirmRequest(BaseModel):
     intents: list[dict]
+    action_log: list = []
+    chat_context: list = []
 
 @app.post("/api/confirm_intents")
 async def confirm_intents_api(request: ConfirmRequest):
@@ -145,7 +159,7 @@ async def confirm_intents_api(request: ConfirmRequest):
     from pipeline import execute_intents
     try:
         t0 = time.perf_counter()
-        result = execute_intents(request.intents)
+        result = execute_intents(request.intents, request.action_log, request.chat_context)
         elapsed = time.perf_counter() - t0
         logger.info("📤 Returning confirmed execution result (total API time: %.2fs)", elapsed)
         return result

@@ -44,6 +44,34 @@
       </div>
     </main>
 
+    <!-- Session History Panel -->
+    <div class="session-history-wrapper">
+      <details class="session-history-panel" id="session-history-panel">
+        <summary class="session-history-summary">
+          <span class="summary-title">📜 Session History (<span id="history-count">0</span> actions)</span>
+          <button id="clear-session-btn" class="clear-session-btn" title="Clear Session Memory">Clear Session</button>
+        </summary>
+        <div class="session-history-content">
+          <div class="table-responsive">
+            <table class="history-table">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Command</th>
+                  <th>Intent</th>
+                  <th>File / Data</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="history-tbody">
+                <tr><td colspan="5" class="text-center text-muted">No actions recorded this session.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </details>
+    </div>
+
     <!-- Input Section -->
     <section class="input-container">
       <div class="card input-card">

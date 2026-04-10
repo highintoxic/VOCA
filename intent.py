@@ -51,13 +51,29 @@ User command: {transcript}
 """
 
 
-def classify_intent(transcript: str) -> list:
+def classify_intent(transcript: str, action_log=None) -> list:
     """
     Classify a transcript into a structured list of intent dicts (compound commands).
 
     Uses Ollama's JSON mode and retries once with a stricter prompt if the
     first attempt fails to parse. Gracefully degrades to unknown on complete failure.
     """
+    action_log = action_log or []
+    
+    # Inject recent context to help LLM resolve vague references ("that file")
+    sys_prompt = SYSTEM_PROMPT
+    if action_log:
+        recent = action_log[-5:]
+        ctx_lines = []
+        for act in recent:
+            if act["intent"] == "create_file":
+                ctx_lines.append(f" - created file {act['filename']}")
+            elif act["intent"] == "write_code":
+                ctx_lines.append(f" - wrote code to {act['filename']} ({act.get('language', 'unknown')})")
+        
+        if ctx_lines:
+            sys_prompt += "\n\nRecent actions this session (for resolving vague references like 'that file'):\n" + "\n".join(ctx_lines)
+
     # --- First attempt ---
     try:
         logger.info("   Sending transcript to %s (attempt 1)…", OLLAMA_MODEL)
@@ -66,7 +82,7 @@ def classify_intent(transcript: str) -> list:
             response = ollama.chat(
                 model=OLLAMA_MODEL,
                 messages=[
-                    {"role": "system", "content": SYSTEM_PROMPT},
+                    {"role": "system", "content": sys_prompt},
                     {"role": "user", "content": transcript},
                 ],
                 format="json",
