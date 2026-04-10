@@ -425,6 +425,51 @@ pre.json-block {
   font-style: italic;
 }
 
+/* --- Confirmation Buttons ------------------------------------------------ */
+.confirm-panel {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: var(--radius-md);
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+
+.confirm-text {
+  font-size: 0.95rem;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.confirm-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.btn-confirm, .btn-cancel {
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: all var(--transition);
+}
+
+.btn-confirm {
+  background: var(--accent-light);
+  color: white;
+}
+.btn-confirm:hover { background: var(--accent); }
+
+.btn-cancel {
+  background: rgba(255,255,255,0.1);
+  color: var(--text-secondary);
+}
+.btn-cancel:hover { background: rgba(255,255,255,0.15); color: var(--text-primary); }
+
 /* --- Animations ---------------------------------------------------------- */
 @keyframes fadeUp {
   from { opacity: 0; transform: translateY(16px); }

@@ -37,6 +37,9 @@ def run_pipeline(audio_input) -> dict:
     result = {
         "transcript": "",
         "results": [],
+        "requires_confirmation": False,
+        "confirmation_message": "",
+        "pending_intents": [],
     }
 
     pipeline_start = time.perf_counter()
@@ -85,6 +88,12 @@ def run_pipeline(audio_input) -> dict:
         logger.info("⚡ Stage 3: Tool Execution (%d actions)", len(intent_array))
         for intent_obj in intent_array:
             action = intent_obj.get("intent", "unknown")
+            
+            if action in {"create_file", "write_code"}:
+                logger.info("   ⏸ Holding action for confirmation: %s", action)
+                result["pending_intents"].append(intent_obj)
+                continue
+                
             logger.info("   ▶ Executing action: %s", action)
             t0 = time.perf_counter()
             tool_res = dispatch(intent_obj)
@@ -96,10 +105,23 @@ def run_pipeline(audio_input) -> dict:
                 "result": tool_res
             })
             logger.info("   ✅ Executed %s in %.2fs. Result preview: %s", action, elapsed, str(tool_res)[:100])
+            
+        if result["pending_intents"]:
+            result["requires_confirmation"] = True
+            parts = []
+            for item in result["pending_intents"]:
+                fname = item.get("filename", "unknown_file")
+                if item.get("intent") == "create_file":
+                    parts.append(f"{fname} (empty)")
+                else:
+                    parts.append(f"{fname} ({item.get('language', 'code')} code)")
+            joined_files = ", ".join(parts)
+            result["confirmation_message"] = f"About to write {len(result['pending_intents'])} file(s): {joined_files}. Proceed?"
+            
     except Exception as e:
         logger.error("   ❌ Tool execution failed: %s", e, exc_info=True)
         result["results"].append({
-            "intent": {"error": "framework_crash"},
+            "intent": {},
             "action": "error",
             "result": f"❌ Tool Execution Error: {e}"
         })
@@ -118,6 +140,9 @@ def process_text_command(text_input: str) -> dict:
     result = {
         "transcript": text_input.strip(),
         "results": [],
+        "requires_confirmation": False,
+        "confirmation_message": "",
+        "pending_intents": [],
     }
 
     pipeline_start = time.perf_counter()
@@ -148,6 +173,12 @@ def process_text_command(text_input: str) -> dict:
         logger.info("⚡ Stage 3: Tool Execution (%d actions)", len(intent_array))
         for intent_obj in intent_array:
             action = intent_obj.get("intent", "unknown")
+            
+            if action in {"create_file", "write_code"}:
+                logger.info("   ⏸ Holding action for confirmation: %s", action)
+                result["pending_intents"].append(intent_obj)
+                continue
+                
             logger.info("   ▶ Executing action: %s", action)
             t0 = time.perf_counter()
             tool_res = dispatch(intent_obj)
@@ -159,10 +190,23 @@ def process_text_command(text_input: str) -> dict:
                 "result": tool_res
             })
             logger.info("   ✅ Executed %s in %.2fs. Result preview: %s", action, elapsed, str(tool_res)[:100])
+            
+        if result["pending_intents"]:
+            result["requires_confirmation"] = True
+            parts = []
+            for item in result["pending_intents"]:
+                fname = item.get("filename", "unknown_file")
+                if item.get("intent") == "create_file":
+                    parts.append(f"{fname} (empty)")
+                else:
+                    parts.append(f"{fname} ({item.get('language', 'code')} code)")
+            joined_files = ", ".join(parts)
+            result["confirmation_message"] = f"About to write {len(result['pending_intents'])} file(s): {joined_files}. Proceed?"
+            
     except Exception as e:
         logger.error("   ❌ Tool execution failed: %s", e, exc_info=True)
         result["results"].append({
-            "intent": {"error": "framework_crash"},
+            "intent": {},
             "action": "error",
             "result": f"❌ Tool Execution Error: {e}"
         })
@@ -172,4 +216,39 @@ def process_text_command(text_input: str) -> dict:
     logger.info("🏁 Text Pipeline complete in %.2fs", total)
     logger.info("═" * 50)
 
+    return result
+
+def execute_intents(intent_array: list) -> dict:
+    """
+    Directly execute an array of intents. Used for Stage 2 confirmation.
+    """
+    result = {
+        "results": [],
+    }
+    logger.info("═" * 50)
+    logger.info("🚀 Executing Confirmed Intents (%d actions)", len(intent_array))
+    
+    try:
+        for intent_obj in intent_array:
+            action = intent_obj.get("intent", "unknown")
+            logger.info("   ▶ Executing action: %s", action)
+            t0 = time.perf_counter()
+            tool_res = dispatch(intent_obj)
+            elapsed = time.perf_counter() - t0
+            
+            result["results"].append({
+                "intent": intent_obj,
+                "action": action,
+                "result": tool_res
+            })
+            logger.info("   ✅ Executed %s in %.2fs", action, elapsed)
+    except Exception as e:
+        logger.error("   ❌ Tool execution failed: %s", e, exc_info=True)
+        result["results"].append({
+            "intent": {},
+            "action": "error",
+            "result": f"❌ Tool Execution Error: {e}"
+        })
+        
+    logger.info("═" * 50)
     return result

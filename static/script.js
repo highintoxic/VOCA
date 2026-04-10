@@ -19,6 +19,8 @@
   const chatHistory = document.getElementById("chat-history");
 
   // --- State --------------------------------------------------------------
+  let pendingIntents = [];
+  let isAwaitingConfirmation = false;
   let mediaRecorder = null;
   let audioChunks = [];
   let isRecording = false;
@@ -29,6 +31,7 @@
 
   // --- Microphone Recording -----------------------------------------------
   micBtn.addEventListener("click", async () => {
+    if (isAwaitingConfirmation || micBtn.disabled) return;
     if (isRecording) {
       stopRecording();
     } else {
@@ -141,6 +144,7 @@
   }
 
   runBtn.addEventListener("click", async () => {
+    if (isAwaitingConfirmation || runBtn.disabled) return;
     const textVal = textInput.value.trim();
     if (textVal) {
       await processText(textVal);
@@ -180,8 +184,10 @@
     } catch (err) {
       console.error("Text Pipeline error:", err);
       appendAgentMessage({
-        action: "error",
-        result: `❌ Error: ${err.message}`
+        results: [{
+          action: "error",
+          result: `❌ Error: ${err.message}`
+        }]
       });
     } finally {
       clearInterval(stageInterval);
@@ -228,8 +234,10 @@
     } catch (err) {
       console.error("Pipeline error:", err);
       appendAgentMessage({
-        action: "error",
-        result: `❌ Error: ${err.message}`
+        results: [{
+          action: "error",
+          result: `❌ Error: ${err.message}`
+        }]
       });
     } finally {
       clearInterval(stageInterval);
@@ -366,8 +374,23 @@
       `;
     });
 
-    if (results.length === 0) {
+    if (results.length === 0 && !data.requires_confirmation) {
       allBlocksHtml = `<p>No parsed actions returned.</p>`;
+    } else if (results.length === 0 && data.requires_confirmation) {
+      // It's possible ONLY pending intents exist and no results
+      allBlocksHtml = ``;
+    }
+    
+    if (data.requires_confirmation) {
+      allBlocksHtml += `
+        <div class="confirm-panel" ${allBlocksHtml ? 'style="margin-top: 1rem;"' : ''}>
+          <div class="confirm-text">${escapeHTML(data.confirmation_message)}</div>
+          <div class="confirm-actions" style="margin-top: 0.8rem;">
+            <button class="btn-confirm" id="btn-confirm-intents">✅ Confirm</button>
+            <button class="btn-cancel" id="btn-cancel-intents">❌ Cancel</button>
+          </div>
+        </div>
+      `;
     }
 
     msgDiv.innerHTML = `
@@ -382,6 +405,73 @@
     
     chatHistory.appendChild(msgDiv);
     scrollToBottom();
+    
+    if (data.requires_confirmation) {
+      isAwaitingConfirmation = true;
+      pendingIntents = data.pending_intents || [];
+      textInput.disabled = true;
+      micBtn.disabled = true;
+      runBtn.disabled = true;
+      
+      const confirmBtn = msgDiv.querySelector("#btn-confirm-intents");
+      const cancelBtn = msgDiv.querySelector("#btn-cancel-intents");
+      
+      confirmBtn.addEventListener("click", () => handleConfirm(msgDiv));
+      cancelBtn.addEventListener("click", () => handleCancel(msgDiv));
+    }
+  }
+
+  async function handleConfirm(panelMsgDiv) {
+    const currPending = pendingIntents;
+    const panel = panelMsgDiv.querySelector('.confirm-panel');
+    if (panel) {
+      panel.innerHTML = `<div class="confirm-text" style="color: var(--text-muted)">✅ Confirmed. Executing...</div>`;
+    }
+    
+    const typingEl = showTypingIndicator("Executing actions…");
+    try {
+      const response = await fetch("/api/confirm_intents", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intents: currPending }),
+      });
+
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
+      const data = await response.json();
+      removeTypingIndicator(typingEl);
+      appendAgentMessage(data); 
+      
+    } catch (err) {
+      console.error("Confirmation error:", err);
+      removeTypingIndicator(typingEl);
+      appendAgentMessage({
+        results: [{
+          action: "error",
+          result: `❌ Error: ${err.message}`
+        }]
+      });
+    } finally {
+      resetConfirmationState();
+    }
+  }
+
+  function handleCancel(panelMsgDiv) {
+    const panel = panelMsgDiv.querySelector('.confirm-panel');
+    if (panel) {
+      panel.innerHTML = `<div class="confirm-text" style="color: var(--text-muted)">❌ File operation cancelled.</div>`;
+    }
+    resetConfirmationState();
+  }
+
+  function resetConfirmationState() {
+    isAwaitingConfirmation = false;
+    pendingIntents = [];
+    textInput.disabled = false;
+    micBtn.disabled = false;
+    if (textInput.value.trim().length > 0 || currentAudioBlob) {
+      runBtn.disabled = false;
+    }
+    textInput.focus();
   }
 
   // Utility to escape HTML and prevent injection

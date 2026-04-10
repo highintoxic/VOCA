@@ -140,5 +140,30 @@ async def process_text_api(request: TextRequest):
             }]
         }
 
+class ConfirmRequest(BaseModel):
+    intents: list[dict]
+
+@app.post("/api/confirm_intents")
+async def confirm_intents_api(request: ConfirmRequest):
+    """
+    Accept an array of confirmed intents directly from the UI and execute them.
+    """
+    from pipeline import execute_intents
+    try:
+        t0 = time.perf_counter()
+        result = execute_intents(request.intents)
+        elapsed = time.perf_counter() - t0
+        logger.info("📤 Returning confirmed execution result (total API time: %.2fs)", elapsed)
+        return result
+    except Exception as e:
+        logger.error("❌ Unhandled error in /api/confirm_intents: %s", e, exc_info=True)
+        return {
+            "results": [{
+                "intent": {},
+                "action": "error",
+                "result": f"❌ Error: {e}",
+            }]
+        }
+
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=7860, reload=False)
