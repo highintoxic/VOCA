@@ -17,6 +17,25 @@ import ollama
 
 OLLAMA_MODEL = "gemma3:4b"
 
+FORMAT_SCHEMA = {
+  "type": "array",
+  "items": {
+    "type": "object",
+    "properties": {
+      "intent": {
+        "type": "string",
+        "enum": ["create_file", "write_code", "summarize", "general_chat", "unknown"]
+      },
+      "filename": { "type": "string" },
+      "language": { "type": "string" },
+      "description": { "type": "string" },
+      "content": { "type": "string" },
+      "message": { "type": "string" }
+    },
+    "required": ["intent"]
+  }
+}
+
 SYSTEM_PROMPT = """\
 You are an intent classifier for a voice-controlled file assistant.
 Given a user's spoken command, respond with a JSON array containing one or more JSON objects representing the ordered intents.
@@ -92,7 +111,7 @@ def classify_intent(transcript: str, action_log=None) -> list:
                     {"role": "system", "content": sys_prompt},
                     {"role": "user", "content": transcript},
                 ],
-                format="json",
+                format=FORMAT_SCHEMA,
             )
         except (httpx.ConnectError, ConnectionError) as e:
             raise PipelineError("intent", "Ollama is not running. Start it with `ollama serve`.")
@@ -124,7 +143,7 @@ def classify_intent(transcript: str, action_log=None) -> list:
                         "content": STRICT_RETRY_PROMPT.format(transcript=transcript),
                     },
                 ],
-                format="json",
+                format=FORMAT_SCHEMA,
             )
         except (httpx.ConnectError, ConnectionError) as e:
             raise PipelineError("intent", "Ollama is not running. Start it with `ollama serve`.")
