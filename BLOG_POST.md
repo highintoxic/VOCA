@@ -29,6 +29,17 @@ For every audio blob ingested, it traverses three fully localized stages:
 
 ---
 
+## 🛠️ The Features & Tool Map
+
+When the pipeline reaches the **Tool Dispatcher**, we strictly map the LLM's structured output into one of four deterministic Python functions designed specifically for automated execution:
+
+- 📁 **`create_file`**: Instantiates a blank file or directory strictly inside an air-gapped `output/` sandbox directory. This is useful for initializing folder structures before writing code to them.
+- 💻 **`write_code`**: Given a description and a targeted filename, this triggers the localized LLM seamlessly as a "code generator", strips out all markdown boundaries securely, and prints raw script logic down onto the hard drive footprint.
+- 📄 **`summarize`**: Bypasses the local hard drive, pulling text input dynamically into the LLM system prompt tuned explicitly for short, bulleted summarization before piping it rapidly back to the active chat stream.
+- 💬 **`general_chat`**: The fallback reasoning bucket for when intents fail parsing or when you simply want to bounce questions off the agent. Chat contexts are passed dynamically across forms to ensure conversations maintain rolling 20-frame bounds!
+
+---
+
 ## 🧠 The Models We Chose (And Why)
 
 Running an entire multi-layered reasoning engine completely locally heavily bounds your constraints by raw GPU VRAM limits. We couldn't throw monolithic deployments at the process. We needed incredibly calculated model selections.
