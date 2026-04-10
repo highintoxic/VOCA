@@ -24,3 +24,5 @@ uv.lock
 # Output directory contents (keep the dir, ignore generated files)
 output/*
 !output/.gitkeep
+BLOG_POST.md
+design.md

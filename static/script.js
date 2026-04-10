@@ -7,7 +7,6 @@
 
   // --- DOM Elements -------------------------------------------------------
   const micBtn = document.getElementById("mic-btn");
-  const micLabel = document.getElementById("mic-label");
   const recTimer = document.getElementById("recording-timer");
   const timerText = document.getElementById("timer-text");
 
@@ -18,8 +17,35 @@
   const runBtn = document.getElementById("run-btn");
   const chatHistory = document.getElementById("chat-history");
   const modelSelect = document.getElementById("model-select");
+  const themeToggle = document.getElementById("theme-toggle");
+
+  // --- Theme Management --------------------------------------------------
+  function initializeTheme() {
+    const savedTheme = localStorage.getItem("voca-theme") || "light";
+    applyTheme(savedTheme);
+  }
+
+  function applyTheme(theme) {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark-mode");
+    } else {
+      document.documentElement.classList.remove("dark-mode");
+    }
+    localStorage.setItem("voca-theme", theme);
+  }
+
+  function toggleTheme() {
+    const isDarkMode = document.documentElement.classList.contains("dark-mode");
+    applyTheme(isDarkMode ? "light" : "dark");
+  }
+
+  if (themeToggle) {
+    themeToggle.addEventListener("click", toggleTheme);
+  }
 
   window.addEventListener("DOMContentLoaded", async () => {
+    initializeTheme();
+    
     if (modelSelect) {
       try {
         const response = await fetch("/api/models");
@@ -113,14 +139,8 @@
     }
     isRecording = false;
     micBtn.classList.remove("recording");
-    micLabel.textContent = "Recording saved ✓";
-    micLabel.style.color = "#22c55e";
     recTimer.classList.remove("visible");
     clearInterval(recordingInterval);
-
-    fileInput.value = "";
-    fileNameEl.textContent = "Upload file";
-    uploadLabel.classList.remove("has-file");
   }
 
   function getSupportedMimeType() {
