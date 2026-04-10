@@ -53,6 +53,18 @@ Operating Local LLMs alongside localized Speech-To-Text processing engines prese
 
 ---
 
+## 🧠 Core System Design Concepts
+
+Voca integrates five foundational engineering concepts that ensure reliability across offline voice intelligence parameters:
+
+1. **Intents**: The LLM doesn't act immediately. It strictly acts as a reasoning classifier, converting raw speech into an array of predictable, formatted JSON objectives (e.g. `intent: write_code`, `intent: summarize`). This strictly binds conversational ambiguity down to structured machine commands.
+2. **Tools**: Specialized and isolated Python functions wrapped in explicit `try/except` bounds. The intents dynamically trigger these tools (like `general_chat` or `create_file`), ensuring that side effects are strictly constrained within safe hardware executions rather than giving the LLM uncontrolled runtime shells.
+3. **Memory**: Realized entirely on the UI plane rather than the backend cache. The client maintains an `action_log` tracking structural changes to the disk, and a `chat_context` array recording conversations. This bypasses backend session-drift entirely.
+4. **Human-In-The-Loop**: A massive safety requirement. Automatically generating code straight from spoken word is risky. Voca suspends all execution pipelines any time an intention registers a write operation to your hard drive, throwing UI control immediately back to the user to visually approve the exact file bindings before anything executes natively.
+5. **Graceful Degradation**: Running localized inference models presents scaling volatility. If STT yields low transcription confidence natively, or if the Ollama framework fails to parse JSON schema output adequately, Voca automatically trips into a degraded state—either deploying strict retry prompts bypassing transcription loops or flashing visual yellow banners natively on the frontend demanding user inspection.
+
+---
+
 ## 🚀 Setup Instructions
 
 1. **Install uv Package Manager**
