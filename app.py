@@ -6,16 +6,56 @@ that accepts audio files and returns the full pipeline result.
 """
 
 import json
+import logging
 import os
+import sys
 import tempfile
+import time
 
 import aiofiles
 import uvicorn
-from fastapi import FastAPI, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse, FileResponse
+
+# ---------------------------------------------------------------------------
+# Logging configuration — must be set up before any module imports that log
+# ---------------------------------------------------------------------------
+
+LOG_FORMAT = (
+    "%(asctime)s │ %(levelname)-7s │ %(name)-12s │ %(message)s"
+)
+DATE_FORMAT = "%H:%M:%S"
+
+def setup_logging():
+    """Configure root logger with a clean, readable format."""
+    root = logging.getLogger()
+    root.setLevel(logging.INFO)
+
+    # Clear existing handlers (e.g. from uvicorn pre-config)
+    root.handlers.clear()
+
+    handler = logging.StreamHandler(sys.stdout)
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter(LOG_FORMAT, datefmt=DATE_FORMAT))
+    root.addHandler(handler)
+
+    # Quieten noisy third-party loggers
+    logging.getLogger("uvicorn.access").setLevel(logging.WARNING)
+    logging.getLogger("uvicorn.error").setLevel(logging.INFO)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("faster_whisper").setLevel(logging.INFO)
+
+setup_logging()
+logger = logging.getLogger(__name__)
 from fastapi.staticfiles import StaticFiles
 
+logger.info("🎙️  Voca — Voice AI Agent starting up…")
+logger.info("   Loading pipeline modules (this triggers model downloads)…")
+
 from pipeline import run_pipeline
+
+logger.info("✅ All modules loaded. Server ready to accept requests.")
 
 app = FastAPI(title="Voca — Voice AI Agent")
 
@@ -41,15 +81,22 @@ async def process_audio(audio: UploadFile = File(...)):
     """
     # Save the uploaded file to a temp location
     suffix = os.path.splitext(audio.filename or ".wav")[1]
+    logger.info("📥 Received audio upload: %s (%s)", audio.filename, suffix)
     tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
     try:
         content = await audio.read()
         tmp.write(content)
         tmp.flush()
         tmp.close()
+        size_kb = len(content) / 1024
+        logger.info("   Saved to temp file: %s (%.1f KB)", tmp.name, size_kb)
 
+        t0 = time.perf_counter()
         result = run_pipeline(tmp.name)
+        elapsed = time.perf_counter() - t0
+        logger.info("📤 Returning result (total API time: %.2fs)", elapsed)
     except Exception as e:
+        logger.error("❌ Unhandled error in /api/process: %s", e, exc_info=True)
         result = {
             "transcript": "",
             "intent": {},

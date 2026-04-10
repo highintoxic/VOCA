@@ -5,18 +5,25 @@ The model is loaded once at module level so GPU weights stay warm between
 requests.  Transcription is done via the `transcribe()` function.
 """
 
+import logging
 import re
+import time
+
+logger = logging.getLogger(__name__)
 from faster_whisper import WhisperModel
 
 # ---------------------------------------------------------------------------
 # Model loading (once, at import time)
 # ---------------------------------------------------------------------------
 
+logger.info("🔧 Loading faster-whisper model (large-v3-turbo, cuda, float16)…")
+_load_start = time.perf_counter()
 _model = WhisperModel(
     "large-v3-turbo",
     device="cuda",
     compute_type="float16",
 )
+logger.info("✅ Whisper model loaded in %.1fs", time.perf_counter() - _load_start)
 
 
 # ---------------------------------------------------------------------------
@@ -41,10 +48,13 @@ def transcribe(audio_path: str) -> dict:
             "language_probability": float  # Confidence 0-1
         }
     """
+    logger.info("   Transcribing: %s", audio_path)
+    t0 = time.perf_counter()
     segments, info = _model.transcribe(audio_path, beam_size=5)
 
     # Collect all segment texts
     full_text = " ".join(segment.text for segment in segments)
+    logger.info("   Segments collected in %.2fs", time.perf_counter() - t0)
 
     # Clean up: strip whitespace, collapse repeated spaces
     full_text = full_text.strip()

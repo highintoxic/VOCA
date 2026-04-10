@@ -5,7 +5,10 @@ Every tool that writes to disk is sandboxed to the `output/` directory.
 The safe_path() utility enforces this boundary.
 """
 
+import logging
 import os
+
+logger = logging.getLogger(__name__)
 from pathlib import Path
 
 import ollama
@@ -39,10 +42,12 @@ def safe_path(filename: str) -> Path:
 
     # Ensure the resolved path is still inside OUTPUT_DIR
     if not str(target).startswith(str(OUTPUT_DIR.resolve())):
+        logger.error("🚫 Path escape attempt blocked: %s → %s", filename, target)
         raise ValueError(
             f"Path escapes the output directory: {filename!r} → {target}"
         )
 
+    logger.debug("   safe_path: %s → %s", filename, target)
     return target
 
 
@@ -52,6 +57,7 @@ def safe_path(filename: str) -> Path:
 
 def create_file(filename: str) -> str:
     """Create an empty file (or directory if name ends with '/') in output/."""
+    logger.info("   📁 create_file: %s", filename)
     path = safe_path(filename)
 
     if filename.endswith("/"):
@@ -65,6 +71,7 @@ def create_file(filename: str) -> str:
 
 def write_code(filename: str, language: str, description: str) -> str:
     """Generate code via Ollama and write it to output/<filename>."""
+    logger.info("   💻 write_code: %s (%s) — %s", filename, language, description[:80])
     path = safe_path(filename)
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -94,11 +101,13 @@ def write_code(filename: str, language: str, description: str) -> str:
         code = "\n".join(lines)
 
     path.write_text(code, encoding="utf-8")
+    logger.info("   ✅ Code written to %s (%d chars)", path, len(code))
     return code
 
 
 def summarize(content: str) -> str:
     """Summarise the given content using Ollama."""
+    logger.info("   📄 summarize: %d chars of content", len(content))
     response = ollama.chat(
         model=OLLAMA_MODEL,
         messages=[
@@ -117,6 +126,7 @@ def summarize(content: str) -> str:
 
 def general_chat(message: str) -> str:
     """Handle general conversation that has no actionable intent."""
+    logger.info("   💬 general_chat: %s", message[:80])
     response = ollama.chat(
         model=OLLAMA_MODEL,
         messages=[
@@ -150,6 +160,8 @@ def dispatch(intent_obj: dict) -> str:
     handler = _TOOL_MAP.get(intent_key)
 
     if handler is None:
+        logger.warning("   Unknown intent: %s", intent_key)
         return f"⚠️ Unknown intent: {intent_key!r}"
 
+    logger.info("   Dispatching to tool: %s", intent_key)
     return handler(intent_obj)

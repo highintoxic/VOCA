@@ -5,6 +5,10 @@ Parses transcribed text into a structured JSON intent object with retry logic.
 """
 
 import json
+import logging
+import time
+
+logger = logging.getLogger(__name__)
 
 import ollama
 
@@ -47,6 +51,8 @@ def classify_intent(transcript: str) -> dict:
     """
     # --- First attempt ---
     try:
+        logger.info("   Sending transcript to %s (attempt 1)…", OLLAMA_MODEL)
+        t0 = time.perf_counter()
         response = ollama.chat(
             model=OLLAMA_MODEL,
             messages=[
@@ -55,11 +61,15 @@ def classify_intent(transcript: str) -> dict:
             ],
             format="json",
         )
-        result = json.loads(response["message"]["content"])
+        elapsed = time.perf_counter() - t0
+        raw = response["message"]["content"]
+        logger.info("   LLM responded in %.2fs: %s", elapsed, raw[:200])
+        result = json.loads(raw)
         _validate(result)
+        logger.info("   ✅ Intent parsed on first attempt")
         return result
-    except (json.JSONDecodeError, KeyError, ValueError):
-        pass  # Fall through to retry
+    except (json.JSONDecodeError, KeyError, ValueError) as e:
+        logger.warning("   ⚠️  First attempt failed (%s), retrying…", e)
 
     # --- Retry with stricter prompt ---
     response = ollama.chat(
