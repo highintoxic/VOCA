@@ -98,11 +98,13 @@ async def process_audio(audio: UploadFile = File(...)):
         logger.info("📤 Returning result (total API time: %.2fs)", elapsed)
     except Exception as e:
         logger.error("❌ Unhandled error in /api/process: %s", e, exc_info=True)
-        result = {
+        return {
             "transcript": "",
-            "intent": {},
-            "action": "",
-            "result": f"❌ Error: {e}",
+            "results": [{
+                "intent": {},
+                "action": "error",
+                "result": f"❌ Error: {e}",
+            }]
         }
     finally:
         try:
@@ -131,9 +133,11 @@ async def process_text_api(request: TextRequest):
         logger.error("❌ Unhandled error in /api/process_text: %s", e, exc_info=True)
         return {
             "transcript": request.text,
-            "intent": {},
-            "action": "",
-            "result": f"❌ Error: {e}",
+            "results": [{
+                "intent": {},
+                "action": "error",
+                "result": f"❌ Error: {e}",
+            }]
         }
 
 if __name__ == "__main__":

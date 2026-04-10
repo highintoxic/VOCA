@@ -36,9 +36,7 @@ def run_pipeline(audio_input) -> dict:
     """
     result = {
         "transcript": "",
-        "intent": {},
-        "action": "",
-        "result": "",
+        "results": [],
     }
 
     pipeline_start = time.perf_counter()
@@ -69,30 +67,42 @@ def run_pipeline(audio_input) -> dict:
         logger.info("─" * 40)
         logger.info("🧠 Stage 2: Intent Classification")
         t0 = time.perf_counter()
-        intent_obj = classify_intent(result["transcript"])
+        intent_array = classify_intent(result["transcript"])
         elapsed = time.perf_counter() - t0
-        result["intent"] = intent_obj
-        result["action"] = intent_obj.get("intent", "unknown")
-        logger.info("   ✅ Intent: %s", intent_obj.get("intent"))
-        logger.info("   Params: %s", {k: v for k, v in intent_obj.items() if k != "intent"})
         logger.info("   ⏱  Classification took %.2fs", elapsed)
     except Exception as e:
         logger.error("   ❌ Intent classification failed: %s", e, exc_info=True)
-        result["result"] = f"❌ Intent Classification Error: {e}"
+        result["results"].append({
+            "intent": {},
+            "action": "error",
+            "result": f"❌ Intent Classification Error: {e}"
+        })
         return result
 
     # --- Stage 3: Tool Execution ---
     try:
         logger.info("─" * 40)
-        logger.info("⚡ Stage 3: Tool Execution → %s", result["action"])
-        t0 = time.perf_counter()
-        result["result"] = dispatch(intent_obj)
-        elapsed = time.perf_counter() - t0
-        logger.info("   ✅ Result preview: %s", str(result["result"])[:150])
-        logger.info("   ⏱  Execution took %.2fs", elapsed)
+        logger.info("⚡ Stage 3: Tool Execution (%d actions)", len(intent_array))
+        for intent_obj in intent_array:
+            action = intent_obj.get("intent", "unknown")
+            logger.info("   ▶ Executing action: %s", action)
+            t0 = time.perf_counter()
+            tool_res = dispatch(intent_obj)
+            elapsed = time.perf_counter() - t0
+            
+            result["results"].append({
+                "intent": intent_obj,
+                "action": action,
+                "result": tool_res
+            })
+            logger.info("   ✅ Executed %s in %.2fs. Result preview: %s", action, elapsed, str(tool_res)[:100])
     except Exception as e:
         logger.error("   ❌ Tool execution failed: %s", e, exc_info=True)
-        result["result"] = f"❌ Tool Execution Error: {e}"
+        result["results"].append({
+            "intent": {"error": "framework_crash"},
+            "action": "error",
+            "result": f"❌ Tool Execution Error: {e}"
+        })
 
     total = time.perf_counter() - pipeline_start
     logger.info("─" * 40)
@@ -107,9 +117,7 @@ def process_text_command(text_input: str) -> dict:
     """
     result = {
         "transcript": text_input.strip(),
-        "intent": {},
-        "action": "",
-        "result": "",
+        "results": [],
     }
 
     pipeline_start = time.perf_counter()
@@ -122,30 +130,42 @@ def process_text_command(text_input: str) -> dict:
         logger.info("─" * 40)
         logger.info("🧠 Stage 2: Intent Classification")
         t0 = time.perf_counter()
-        intent_obj = classify_intent(result["transcript"])
+        intent_array = classify_intent(result["transcript"])
         elapsed = time.perf_counter() - t0
-        result["intent"] = intent_obj
-        result["action"] = intent_obj.get("intent", "unknown")
-        logger.info("   ✅ Intent: %s", intent_obj.get("intent"))
-        logger.info("   Params: %s", {k: v for k, v in intent_obj.items() if k != "intent"})
         logger.info("   ⏱  Classification took %.2fs", elapsed)
     except Exception as e:
         logger.error("   ❌ Intent classification failed: %s", e, exc_info=True)
-        result["result"] = f"❌ Intent Classification Error: {e}"
+        result["results"].append({
+            "intent": {},
+            "action": "error",
+            "result": f"❌ Intent Classification Error: {e}"
+        })
         return result
 
     # --- Stage 3: Tool Execution ---
     try:
         logger.info("─" * 40)
-        logger.info("⚡ Stage 3: Tool Execution → %s", result["action"])
-        t0 = time.perf_counter()
-        result["result"] = dispatch(intent_obj)
-        elapsed = time.perf_counter() - t0
-        logger.info("   ✅ Result preview: %s", str(result["result"])[:150])
-        logger.info("   ⏱  Execution took %.2fs", elapsed)
+        logger.info("⚡ Stage 3: Tool Execution (%d actions)", len(intent_array))
+        for intent_obj in intent_array:
+            action = intent_obj.get("intent", "unknown")
+            logger.info("   ▶ Executing action: %s", action)
+            t0 = time.perf_counter()
+            tool_res = dispatch(intent_obj)
+            elapsed = time.perf_counter() - t0
+            
+            result["results"].append({
+                "intent": intent_obj,
+                "action": action,
+                "result": tool_res
+            })
+            logger.info("   ✅ Executed %s in %.2fs. Result preview: %s", action, elapsed, str(tool_res)[:100])
     except Exception as e:
         logger.error("   ❌ Tool execution failed: %s", e, exc_info=True)
-        result["result"] = f"❌ Tool Execution Error: {e}"
+        result["results"].append({
+            "intent": {"error": "framework_crash"},
+            "action": "error",
+            "result": f"❌ Tool Execution Error: {e}"
+        })
 
     total = time.perf_counter() - pipeline_start
     logger.info("─" * 40)

@@ -308,7 +308,7 @@
   }
 
   function appendAgentMessage(data) {
-    const { intent, action, result } = data;
+    const results = data.results || [];
     
     // Create elements dynamically to inject content safely
     const msgDiv = document.createElement("div");
@@ -323,43 +323,59 @@
       error: "❌ Pipeline Error",
       unknown: "⚠️ Unknown Intent"
     };
-    
-    const actionTitle = actionIcons[action] || action || "Process Result";
 
-    // Build the intent JSON block safely
-    let intentHtml = "";
-    if (intent && Object.keys(intent).length > 0) {
-      intentHtml = `
-        <div class="detail-block">
+    let allBlocksHtml = "";
+
+    results.forEach((res, idx) => {
+      const intent = res.intent;
+      const action = res.action;
+      const resultText = res.result;
+
+      const actionTitle = actionIcons[action] || action || "Process Result";
+
+      let intentHtml = "";
+      if (intent && Object.keys(intent).length > 0) {
+        intentHtml = `
+          <div class="detail-block">
+            <div class="detail-header">
+              <span>🧠 Intent JSON ${results.length > 1 ? `(#${idx + 1})` : ''}</span>
+            </div>
+            <div class="detail-body">
+              <pre class="code-block json-block">${escapeHTML(JSON.stringify(intent, null, 2))}</pre>
+            </div>
+          </div>
+        `;
+      }
+
+      let resultHtml = `
+        <div class="detail-block" style="${intentHtml ? 'margin-top: 0.5rem;' : ''}">
           <div class="detail-header">
-            <span>🧠 Intent JSON</span>
+            <span>📋 ${actionTitle}</span>
           </div>
           <div class="detail-body">
-            <pre class="code-block json-block">${escapeHTML(JSON.stringify(intent, null, 2))}</pre>
+            <pre class="code-block">${escapeHTML(resultText || "No result generated.")}</pre>
           </div>
         </div>
       `;
-    }
 
-    // Build Result Block
-    let resultHtml = `
-      <div class="detail-block">
-        <div class="detail-header">
-          <span>📋 ${actionTitle}</span>
+      allBlocksHtml += `
+        <div class="action-combo" style="${idx > 0 ? 'margin-top: 2rem; padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.1);' : ''}">
+          ${intentHtml}
+          ${resultHtml}
         </div>
-        <div class="detail-body">
-          <pre class="code-block">${escapeHTML(result || "No result generated.")}</pre>
-        </div>
-      </div>
-    `;
+      `;
+    });
+
+    if (results.length === 0) {
+      allBlocksHtml = `<p>No parsed actions returned.</p>`;
+    }
 
     msgDiv.innerHTML = `
       <div class="avatar">🎙️</div>
       <div class="bubble">
         <p class="role-title">Voca</p>
         <div class="bubble-content">
-          ${intentHtml}
-          ${resultHtml}
+          ${allBlocksHtml}
         </div>
       </div>
     `;
