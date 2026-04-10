@@ -3,323 +3,338 @@
    ========================================================================= */
 
 (() => {
-  "use strict";
+	"use strict";
 
-  // --- DOM Elements -------------------------------------------------------
-  const micBtn = document.getElementById("mic-btn");
-  const recTimer = document.getElementById("recording-timer");
-  const timerText = document.getElementById("timer-text");
+	// --- DOM Elements -------------------------------------------------------
+	const micBtn = document.getElementById("mic-btn");
+	const recTimer = document.getElementById("recording-timer");
+	const timerText = document.getElementById("timer-text");
 
-  const fileInput = document.getElementById("file-input");
-  const uploadLabel = document.getElementById("upload-label");
+	const fileInput = document.getElementById("file-input");
+	const uploadLabel = document.getElementById("upload-label");
 
-  const textInput = document.getElementById("text-input");
-  const runBtn = document.getElementById("run-btn");
-  const chatHistory = document.getElementById("chat-history");
-  const modelSelect = document.getElementById("model-select");
-  const themeToggle = document.getElementById("theme-toggle");
+	const textInput = document.getElementById("text-input");
+	const runBtn = document.getElementById("run-btn");
+	const chatHistory = document.getElementById("chat-history");
+	const modelSelect = document.getElementById("model-select");
+	const themeToggle = document.getElementById("theme-toggle");
 
-  // --- Theme Management --------------------------------------------------
-  function initializeTheme() {
-    const savedTheme = localStorage.getItem("voca-theme") || "light";
-    applyTheme(savedTheme);
-  }
+	// --- Theme Management --------------------------------------------------
+	function initializeTheme() {
+		const savedTheme = localStorage.getItem("voca-theme") || "light";
+		applyTheme(savedTheme);
+	}
 
-  function applyTheme(theme) {
-    if (theme === "dark") {
-      document.documentElement.classList.add("dark-mode");
-    } else {
-      document.documentElement.classList.remove("dark-mode");
-    }
-    localStorage.setItem("voca-theme", theme);
-  }
+	function applyTheme(theme) {
+		if (theme === "dark") {
+			document.documentElement.classList.add("dark-mode");
+		} else {
+			document.documentElement.classList.remove("dark-mode");
+		}
+		localStorage.setItem("voca-theme", theme);
+	}
 
-  function toggleTheme() {
-    const isDarkMode = document.documentElement.classList.contains("dark-mode");
-    applyTheme(isDarkMode ? "light" : "dark");
-  }
+	function toggleTheme() {
+		const isDarkMode = document.documentElement.classList.contains("dark-mode");
+		applyTheme(isDarkMode ? "light" : "dark");
+	}
 
-  if (themeToggle) {
-    themeToggle.addEventListener("click", toggleTheme);
-  }
+	if (themeToggle) {
+		themeToggle.addEventListener("click", toggleTheme);
+	}
 
-  window.addEventListener("DOMContentLoaded", async () => {
-    initializeTheme();
-    
-    if (modelSelect) {
-      try {
-        const response = await fetch("/api/models");
-        const data = await response.json();
-        
-        if (data && data.models && data.models.length > 0) {
-          modelSelect.innerHTML = "";
-          data.models.forEach(model => {
-            const option = document.createElement("option");
-            option.value = model.name;
-            option.textContent = model.name;
-            if (model.name === "gemma3:4b") option.selected = true;
-            modelSelect.appendChild(option);
-          });
-        } else {
-          modelSelect.innerHTML = `<option value="gemma3:4b">gemma3:4b</option>`;
-        }
-      } catch (e) {
-        console.error("Failed to load models:", e);
-        modelSelect.innerHTML = `<option value="gemma3:4b">gemma3:4b</option>`;
-      }
-    }
-  });
+	window.addEventListener("DOMContentLoaded", async () => {
+		initializeTheme();
 
-  // --- State --------------------------------------------------------------
-  let pendingIntents = [];
-  let isAwaitingConfirmation = false;
-  let actionLogState = [];
-  let chatContextState = [];
-  let mediaRecorder = null;
-  let audioChunks = [];
-  let isRecording = false;
-  let recordingInterval = null;
-  let recordingSeconds = 0;
-  let currentAudioBlob = null;
-  let currentFileName = "recording.wav";
+		if (modelSelect) {
+			try {
+				const response = await fetch("/api/models");
+				const data = await response.json();
 
-  // --- Microphone Recording -----------------------------------------------
-  micBtn.addEventListener("click", async () => {
-    if (isAwaitingConfirmation || micBtn.disabled) return;
-    if (isRecording) {
-      stopRecording();
-    } else {
-      await startRecording();
-    }
-  });
+				if (data && data.models && data.models.length > 0) {
+					modelSelect.innerHTML = "";
+					data.models.forEach((model) => {
+						const option = document.createElement("option");
+						option.value = model.name;
+						option.textContent = model.name;
+						if (model.name === "gemma3:4b") option.selected = true;
+						modelSelect.appendChild(option);
+					});
+				} else {
+					modelSelect.innerHTML = `<option value="gemma3:4b">gemma3:4b</option>`;
+				}
+			} catch (e) {
+				console.error("Failed to load models:", e);
+				modelSelect.innerHTML = `<option value="gemma3:4b">gemma3:4b</option>`;
+			}
+		}
+	});
 
-  async function startRecording() {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream, { mimeType: getSupportedMimeType() });
-      audioChunks = [];
+	// --- State --------------------------------------------------------------
+	let pendingIntents = [];
+	let isAwaitingConfirmation = false;
+	let actionLogState = [];
+	let chatContextState = [];
+	let mediaRecorder = null;
+	let audioChunks = [];
+	let isRecording = false;
+	let recordingInterval = null;
+	let recordingSeconds = 0;
+	let currentAudioBlob = null;
+	let currentFileName = "recording.wav";
 
-      mediaRecorder.ondataavailable = (e) => {
-        if (e.data.size > 0) audioChunks.push(e.data);
-      };
+	// --- Microphone Recording -----------------------------------------------
+	micBtn.addEventListener("click", async () => {
+		if (isAwaitingConfirmation || micBtn.disabled) return;
+		if (isRecording) {
+			stopRecording();
+		} else {
+			await startRecording();
+		}
+	});
 
-      mediaRecorder.onstop = () => {
-        const mimeType = mediaRecorder.mimeType || "audio/webm";
-        currentAudioBlob = new Blob(audioChunks, { type: mimeType });
-        const ext = mimeType.includes("webm") ? "webm" : "wav";
-        currentFileName = `recording.${ext}`;
-        stream.getTracks().forEach((t) => t.stop());
-        enableRunButton();
-      };
+	async function startRecording() {
+		try {
+			const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+			mediaRecorder = new MediaRecorder(stream, {
+				mimeType: getSupportedMimeType(),
+			});
+			audioChunks = [];
 
-      mediaRecorder.start();
-      isRecording = true;
-      micBtn.classList.add("recording");
-      micLabel.textContent = "Recording...";
-      recTimer.classList.add("visible");
-      recordingSeconds = 0;
-      timerText.textContent = "00:00";
+			mediaRecorder.ondataavailable = (e) => {
+				if (e.data.size > 0) audioChunks.push(e.data);
+			};
 
-      recordingInterval = setInterval(() => {
-        recordingSeconds++;
-        const m = String(Math.floor(recordingSeconds / 60)).padStart(2, "0");
-        const s = String(recordingSeconds % 60).padStart(2, "0");
-        timerText.textContent = `${m}:${s}`;
-      }, 1000);
-    } catch (err) {
-      console.error("Microphone access denied:", err);
-      micLabel.textContent = "Mic access denied";
-      micLabel.style.color = "#ef4444";
-    }
-  }
+			mediaRecorder.onstop = () => {
+				const mimeType = mediaRecorder.mimeType || "audio/webm";
+				currentAudioBlob = new Blob(audioChunks, { type: mimeType });
+				const ext = mimeType.includes("webm") ? "webm" : "wav";
+				currentFileName = `recording.${ext}`;
+				stream.getTracks().forEach((t) => t.stop());
+				enableRunButton();
+			};
 
-  function stopRecording() {
-    if (mediaRecorder && mediaRecorder.state !== "inactive") {
-      mediaRecorder.stop();
-    }
-    isRecording = false;
-    micBtn.classList.remove("recording");
-    recTimer.classList.remove("visible");
-    clearInterval(recordingInterval);
-  }
+			mediaRecorder.start();
+			isRecording = true;
+			micBtn.classList.add("recording");
+			micLabel.textContent = "Recording...";
+			recTimer.classList.add("visible");
+			recordingSeconds = 0;
+			timerText.textContent = "00:00";
 
-  function getSupportedMimeType() {
-    const types = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg", "audio/wav"];
-    for (const type of types) {
-      if (MediaRecorder.isTypeSupported(type)) return type;
-    }
-    return "";
-  }
+			recordingInterval = setInterval(() => {
+				recordingSeconds++;
+				const m = String(Math.floor(recordingSeconds / 60)).padStart(2, "0");
+				const s = String(recordingSeconds % 60).padStart(2, "0");
+				timerText.textContent = `${m}:${s}`;
+			}, 1000);
+		} catch (err) {
+			console.error("Microphone access denied:", err);
+			micLabel.textContent = "Mic access denied";
+			micLabel.style.color = "#ef4444";
+		}
+	}
 
-  // --- File Upload --------------------------------------------------------
-  fileInput.addEventListener("change", (e) => {
-    const file = e.target.files[0];
-    if (!file) return;
+	function stopRecording() {
+		if (mediaRecorder && mediaRecorder.state !== "inactive") {
+			mediaRecorder.stop();
+		}
+		isRecording = false;
+		micBtn.classList.remove("recording");
+		recTimer.classList.remove("visible");
+		clearInterval(recordingInterval);
+	}
 
-    currentAudioBlob = file;
-    currentFileName = file.name;
-    uploadLabel.classList.add("has-file");
-    uploadLabel.title = file.name;
-    textInput.value = ""; // clear text if uploading audio
+	function getSupportedMimeType() {
+		const types = [
+			"audio/webm;codecs=opus",
+			"audio/webm",
+			"audio/ogg",
+			"audio/wav",
+		];
+		for (const type of types) {
+			if (MediaRecorder.isTypeSupported(type)) return type;
+		}
+		return "";
+	}
 
-    enableRunButton();
-  });
+	// --- File Upload --------------------------------------------------------
+	fileInput.addEventListener("change", (e) => {
+		const file = e.target.files[0];
+		if (!file) return;
 
-  // --- Text Input ---------------------------------------------------------
-  textInput.addEventListener("input", () => {
-    if (textInput.value.trim().length > 0) {
-      enableRunButton();
-      // Optionally clear audio if they start typing
-      if (currentAudioBlob && !isRecording) {
-        currentAudioBlob = null;
-        fileInput.value = "";
-        uploadLabel.classList.remove("has-file");
-      }
-    } else if (!currentAudioBlob) {
-      runBtn.disabled = true;
-    }
-  });
+		currentAudioBlob = file;
+		currentFileName = file.name;
+		uploadLabel.classList.add("has-file");
+		uploadLabel.title = file.name;
+		textInput.value = ""; // clear text if uploading audio
 
-  textInput.addEventListener("keypress", (e) => {
-    if (e.key === "Enter" && !runBtn.disabled) {
-      runBtn.click();
-    }
-  });
+		enableRunButton();
+	});
 
-  // --- Run / Processing ---------------------------------------------------
-  function enableRunButton() {
-    runBtn.disabled = false;
-  }
+	// --- Text Input ---------------------------------------------------------
+	textInput.addEventListener("input", () => {
+		if (textInput.value.trim().length > 0) {
+			enableRunButton();
+			// Optionally clear audio if they start typing
+			if (currentAudioBlob && !isRecording) {
+				currentAudioBlob = null;
+				fileInput.value = "";
+				uploadLabel.classList.remove("has-file");
+			}
+		} else if (!currentAudioBlob) {
+			runBtn.disabled = true;
+		}
+	});
 
-  runBtn.addEventListener("click", async () => {
-    if (isAwaitingConfirmation || runBtn.disabled) return;
-    const textVal = textInput.value.trim();
-    if (textVal) {
-      await processText(textVal);
-    } else if (currentAudioBlob) {
-      await processAudio();
-    }
-  });
+	textInput.addEventListener("keypress", (e) => {
+		if (e.key === "Enter" && !runBtn.disabled) {
+			runBtn.click();
+		}
+	});
 
-  async function processText(text) {
-    runBtn.disabled = true;
-    textInput.disabled = true;
-    appendUserMessage(text);
-    textInput.value = "";
+	// --- Run / Processing ---------------------------------------------------
+	function enableRunButton() {
+		runBtn.disabled = false;
+	}
 
-    const typingEl = showTypingIndicator("Classifying intent…");
+	runBtn.addEventListener("click", async () => {
+		if (isAwaitingConfirmation || runBtn.disabled) return;
+		const textVal = textInput.value.trim();
+		if (textVal) {
+			await processText(textVal);
+		} else if (currentAudioBlob) {
+			await processAudio();
+		}
+	});
 
-    const stages = ["Executing action…", "Preparing results…"];
-    let stageIdx = 0;
-    const stageInterval = setInterval(() => {
-      if (stageIdx < stages.length) {
-        updateTypingIndicator(typingEl, stages[stageIdx]);
-        stageIdx++;
-      }
-    }, 2000);
+	async function processText(text) {
+		runBtn.disabled = true;
+		textInput.disabled = true;
+		appendUserMessage(text);
+		textInput.value = "";
 
-    try {
-      const response = await fetch("/api/process_text", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          text: text,
-          action_log: actionLogState,
-          chat_context: chatContextState,
-          llm_model: modelSelect ? modelSelect.value : "gemma3:4b"
-        }),
-      });
+		const typingEl = showTypingIndicator("Classifying intent…");
 
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
-      const data = await response.json();
-      syncState(data);
-      appendAgentMessage(data);
+		const stages = ["Executing action…", "Preparing results…"];
+		let stageIdx = 0;
+		const stageInterval = setInterval(() => {
+			if (stageIdx < stages.length) {
+				updateTypingIndicator(typingEl, stages[stageIdx]);
+				stageIdx++;
+			}
+		}, 2000);
 
-    } catch (err) {
-      console.error("Text Pipeline error:", err);
-      appendAgentMessage({
-        error: true,
-        stage: "framework",
-        message: err.message
-      });
-    } finally {
-      clearInterval(stageInterval);
-      removeTypingIndicator(typingEl);
-      textInput.disabled = false;
-      textInput.focus();
-      runBtn.disabled = true;
-    }
-  }
+		try {
+			const response = await fetch("/api/process_text", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					text: text,
+					action_log: actionLogState,
+					chat_context: chatContextState,
+					llm_model: modelSelect ? modelSelect.value : "gemma3:4b",
+				}),
+			});
 
-  async function processAudio() {
-    runBtn.disabled = true;
-    
-    // For audio, we haven't transcribed yet, so just show the typing bubble
-    // User bubble will be inserted after STT finishes
-    const typingEl = showTypingIndicator("Transcribing audio…");
+			if (!response.ok) throw new Error(`Server error: ${response.status}`);
+			const data = await response.json();
+			syncState(data);
+			appendAgentMessage(data);
+		} catch (err) {
+			console.error("Text Pipeline error:", err);
+			appendAgentMessage({
+				error: true,
+				stage: "framework",
+				message: err.message,
+			});
+		} finally {
+			clearInterval(stageInterval);
+			removeTypingIndicator(typingEl);
+			textInput.disabled = false;
+			textInput.focus();
+			runBtn.disabled = true;
+		}
+	}
 
-    const stages = ["Classifying intent…", "Executing action…", "Preparing results…"];
-    let stageIdx = 0;
-    const stageInterval = setInterval(() => {
-      if (stageIdx < stages.length) {
-        updateTypingIndicator(typingEl, stages[stageIdx]);
-        stageIdx++;
-      }
-    }, 3000);
+	async function processAudio() {
+		runBtn.disabled = true;
 
-    try {
-      const formData = new FormData();
-      formData.append("audio", currentAudioBlob, currentFileName);
-      formData.append("state", JSON.stringify({
-        action_log: actionLogState,
-        chat_context: chatContextState,
-        llm_model: modelSelect ? modelSelect.value : "gemma3:4b"
-      }));
+		// For audio, we haven't transcribed yet, so just show the typing bubble
+		// User bubble will be inserted after STT finishes
+		const typingEl = showTypingIndicator("Transcribing audio…");
 
-      const response = await fetch("/api/process", {
-        method: "POST",
-        body: formData,
-      });
+		const stages = [
+			"Classifying intent…",
+			"Executing action…",
+			"Preparing results…",
+		];
+		let stageIdx = 0;
+		const stageInterval = setInterval(() => {
+			if (stageIdx < stages.length) {
+				updateTypingIndicator(typingEl, stages[stageIdx]);
+				stageIdx++;
+			}
+		}, 3000);
 
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
-      const data = await response.json();
-      syncState(data);
-      
-      // Remove typing bubble briefly so User Bubble appears correctly before Agent Response
-      removeTypingIndicator(typingEl);
-      if (!data.error || data.stage !== "stt") {
-        appendUserMessage(data.transcript || "(Empty transcript)", data.low_confidence);
-      }
-      appendAgentMessage(data);
+		try {
+			const formData = new FormData();
+			formData.append("audio", currentAudioBlob, currentFileName);
+			formData.append(
+				"state",
+				JSON.stringify({
+					action_log: actionLogState,
+					chat_context: chatContextState,
+					llm_model: modelSelect ? modelSelect.value : "gemma3:4b",
+				}),
+			);
 
-    } catch (err) {
-      console.error("Pipeline error:", err);
-      appendAgentMessage({
-        error: true,
-        stage: "framework",
-        message: err.message
-      });
-    } finally {
-      clearInterval(stageInterval);
-      // In case of error it might still be there
-      if (document.body.contains(typingEl)) {
-         removeTypingIndicator(typingEl);
-      }
-      
-      // Reset inputs
-      currentAudioBlob = null;
-      uploadLabel.classList.remove("has-file");
-      uploadLabel.title = "Upload an audio file";
-      runBtn.disabled = true;
-    }
-  }
+			const response = await fetch("/api/process", {
+				method: "POST",
+				body: formData,
+			});
 
-  // --- Chat UI Creation ---------------------------------------------------
+			if (!response.ok) throw new Error(`Server error: ${response.status}`);
+			const data = await response.json();
+			syncState(data);
 
-  function showTypingIndicator(initialText) {
-    const msgDiv = document.createElement("div");
-    msgDiv.className = "message agent typing-msg";
-    msgDiv.innerHTML = `
+			// Remove typing bubble briefly so User Bubble appears correctly before Agent Response
+			removeTypingIndicator(typingEl);
+			if (!data.error || data.stage !== "stt") {
+				appendUserMessage(
+					data.transcript || "(Empty transcript)",
+					data.low_confidence,
+				);
+			}
+			appendAgentMessage(data);
+		} catch (err) {
+			console.error("Pipeline error:", err);
+			appendAgentMessage({
+				error: true,
+				stage: "framework",
+				message: err.message,
+			});
+		} finally {
+			clearInterval(stageInterval);
+			// In case of error it might still be there
+			if (document.body.contains(typingEl)) {
+				removeTypingIndicator(typingEl);
+			}
+
+			// Reset inputs
+			currentAudioBlob = null;
+			uploadLabel.classList.remove("has-file");
+			uploadLabel.title = "Upload an audio file";
+			runBtn.disabled = true;
+		}
+	}
+
+	// --- Chat UI Creation ---------------------------------------------------
+
+	function showTypingIndicator(initialText) {
+		const msgDiv = document.createElement("div");
+		msgDiv.className = "message agent typing-msg";
+		msgDiv.innerHTML = `
       <div class="avatar">🎙️</div>
       <div class="bubble">
         <p class="role-title">Voca</p>
@@ -333,44 +348,44 @@
         </div>
       </div>
     `;
-    chatHistory.appendChild(msgDiv);
-    scrollToBottom();
-    return msgDiv;
-  }
+		chatHistory.appendChild(msgDiv);
+		scrollToBottom();
+		return msgDiv;
+	}
 
-  function updateTypingIndicator(element, text) {
-    if (!element) return;
-    const textEl = element.querySelector(".typing-text");
-    if (textEl) textEl.textContent = text;
-  }
+	function updateTypingIndicator(element, text) {
+		if (!element) return;
+		const textEl = element.querySelector(".typing-text");
+		if (textEl) textEl.textContent = text;
+	}
 
-  function removeTypingIndicator(element) {
-    if (element && element.parentNode) {
-      element.parentNode.removeChild(element);
-    }
-  }
+	function removeTypingIndicator(element) {
+		if (element && element.parentNode) {
+			element.parentNode.removeChild(element);
+		}
+	}
 
-  function scrollToBottom() {
-    setTimeout(() => {
-      chatHistory.scrollTo({
-        top: chatHistory.scrollHeight,
-        behavior: 'smooth'
-      });
-    }, 50);
-  }
+	function scrollToBottom() {
+		setTimeout(() => {
+			chatHistory.scrollTo({
+				top: chatHistory.scrollHeight,
+				behavior: "smooth",
+			});
+		}, 50);
+	}
 
-  function appendUserMessage(text, isLowConfidence=false) {
-    const msgDiv = document.createElement("div");
-    msgDiv.className = "message user";
-    let warning = "";
-    if (isLowConfidence) {
-        warning = `
+	function appendUserMessage(text, isLowConfidence = false) {
+		const msgDiv = document.createElement("div");
+		msgDiv.className = "message user";
+		let warning = "";
+		if (isLowConfidence) {
+			warning = `
           <div class="warning-banner" style="margin-bottom: 0.5rem; padding: 0.5rem; background: rgba(255, 170, 0, 0.1); border-left: 3px solid #ffaa00; border-radius: 4px; font-size: 0.85rem; color: #ffaa00;">
             ⚠️ Low confidence — please verify transcript before running.
           </div>
         `;
-    }
-    msgDiv.innerHTML = `
+		}
+		msgDiv.innerHTML = `
       <div class="avatar">👤</div>
       <div class="bubble">
         <p class="role-title">You</p>
@@ -380,66 +395,66 @@
         </div>
       </div>
     `;
-    chatHistory.appendChild(msgDiv);
-    scrollToBottom();
-  }
+		chatHistory.appendChild(msgDiv);
+		scrollToBottom();
+	}
 
-  function appendAgentMessage(data) {
-    const msgDiv = document.createElement("div");
-    msgDiv.className = "message agent";
+	function appendAgentMessage(data) {
+		const msgDiv = document.createElement("div");
+		msgDiv.className = "message agent";
 
-    if (data.error) {
-      msgDiv.innerHTML = `
+		if (data.error) {
+			msgDiv.innerHTML = `
         <div class="avatar" style="background: rgba(255, 60, 60, 0.1);">❌</div>
         <div class="bubble error-bubble" style="border: 1px solid rgba(255, 60, 60, 0.3);">
-          <p class="role-title" style="color: #ff6b6b; font-weight: 600;">Pipeline Failed — Stage: ${escapeHTML(data.stage || 'unknown')}</p>
+          <p class="role-title" style="color: #ff6b6b; font-weight: 600;">Pipeline Failed — Stage: ${escapeHTML(data.stage || "unknown")}</p>
           <div class="bubble-content" style="color: var(--text-primary); margin-top: 5px;">
-            ${escapeHTML(data.message || 'An unknown error occurred.')}
+            ${escapeHTML(data.message || "An unknown error occurred.")}
           </div>
         </div>
       `;
-      chatHistory.appendChild(msgDiv);
-      scrollToBottom();
-      return;
-    }
+			chatHistory.appendChild(msgDiv);
+			scrollToBottom();
+			return;
+		}
 
-    const results = data.results || [];
-    
-    // Determine title block for Action
-    const actionIcons = {
-      create_file: "📁 Create File",
-      write_code: "💻 Code Generation",
-      summarize: "📄 Summary",
-      general_chat: "💬 General Chat",
-      error: "❌ Pipeline Error",
-      unknown: "⚠️ Unknown Intent"
-    };
+		const results = data.results || [];
 
-    let allBlocksHtml = "";
+		// Determine title block for Action
+		const actionIcons = {
+			create_file: "📁 Create File",
+			write_code: "💻 Code Generation",
+			summarize: "📄 Summary",
+			general_chat: "💬 General Chat",
+			error: "❌ Pipeline Error",
+			unknown: "⚠️ Unknown Intent",
+		};
 
-    results.forEach((res, idx) => {
-      const intent = res.intent;
-      const action = res.action;
-      const resultText = res.result;
+		let allBlocksHtml = "";
 
-      const actionTitle = actionIcons[action] || action || "Process Result";
+		results.forEach((res, idx) => {
+			const intent = res.intent;
+			const action = res.action;
+			const resultText = res.result;
 
-      let intentHtml = "";
-      if (intent && Object.keys(intent).length > 0) {
-        intentHtml = `
+			const actionTitle = actionIcons[action] || action || "Process Result";
+
+			let intentHtml = "";
+			if (intent && Object.keys(intent).length > 0) {
+				intentHtml = `
           <div class="detail-block">
             <div class="detail-header">
-              <span>🧠 Intent JSON ${results.length > 1 ? `(#${idx + 1})` : ''}</span>
+              <span>🧠 Intent JSON ${results.length > 1 ? `(#${idx + 1})` : ""}</span>
             </div>
             <div class="detail-body">
               <pre class="code-block json-block">${escapeHTML(JSON.stringify(intent, null, 2))}</pre>
             </div>
           </div>
         `;
-      }
+			}
 
-      let resultHtml = `
-        <div class="detail-block" style="${intentHtml ? 'margin-top: 0.5rem;' : ''}">
+			let resultHtml = `
+        <div class="detail-block" style="${intentHtml ? "margin-top: 0.5rem;" : ""}">
           <div class="detail-header">
             <span>📋 ${actionTitle}</span>
           </div>
@@ -449,24 +464,24 @@
         </div>
       `;
 
-      allBlocksHtml += `
-        <div class="action-combo" style="${idx > 0 ? 'margin-top: 2rem; padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.1);' : ''}">
+			allBlocksHtml += `
+        <div class="action-combo" style="${idx > 0 ? "margin-top: 2rem; padding-top: 1rem; border-top: 1px dashed rgba(255,255,255,0.1);" : ""}">
           ${intentHtml}
           ${resultHtml}
         </div>
       `;
-    });
+		});
 
-    if (results.length === 0 && !data.requires_confirmation) {
-      allBlocksHtml = `<p>No parsed actions returned.</p>`;
-    } else if (results.length === 0 && data.requires_confirmation) {
-      // It's possible ONLY pending intents exist and no results
-      allBlocksHtml = ``;
-    }
-    
-    if (data.requires_confirmation) {
-      allBlocksHtml += `
-        <div class="confirm-panel" ${allBlocksHtml ? 'style="margin-top: 1rem;"' : ''}>
+		if (results.length === 0 && !data.requires_confirmation) {
+			allBlocksHtml = `<p>No parsed actions returned.</p>`;
+		} else if (results.length === 0 && data.requires_confirmation) {
+			// It's possible ONLY pending intents exist and no results
+			allBlocksHtml = ``;
+		}
+
+		if (data.requires_confirmation) {
+			allBlocksHtml += `
+        <div class="confirm-panel" ${allBlocksHtml ? 'style="margin-top: 1rem;"' : ""}>
           <div class="confirm-text">${escapeHTML(data.confirmation_message)}</div>
           <div class="confirm-actions" style="margin-top: 0.8rem;">
             <button class="btn-confirm" id="btn-confirm-intents">✅ Confirm</button>
@@ -474,9 +489,9 @@
           </div>
         </div>
       `;
-    }
+		}
 
-    msgDiv.innerHTML = `
+		msgDiv.innerHTML = `
       <div class="avatar">🎙️</div>
       <div class="bubble">
         <p class="role-title">Voca</p>
@@ -485,136 +500,137 @@
         </div>
       </div>
     `;
-    
-    chatHistory.appendChild(msgDiv);
-    scrollToBottom();
-    
-    if (data.requires_confirmation) {
-      isAwaitingConfirmation = true;
-      pendingIntents = data.pending_intents || [];
-      textInput.disabled = true;
-      micBtn.disabled = true;
-      runBtn.disabled = true;
-      
-      const confirmBtn = msgDiv.querySelector("#btn-confirm-intents");
-      const cancelBtn = msgDiv.querySelector("#btn-cancel-intents");
-      
-      confirmBtn.addEventListener("click", () => handleConfirm(msgDiv));
-      cancelBtn.addEventListener("click", () => handleCancel(msgDiv));
-    }
-  }
 
-  async function handleConfirm(panelMsgDiv) {
-    const currPending = pendingIntents;
-    const panel = panelMsgDiv.querySelector('.confirm-panel');
-    if (panel) {
-      panel.innerHTML = `<div class="confirm-text" style="color: var(--text-muted)">✅ Confirmed. Executing...</div>`;
-    }
-    
-    const typingEl = showTypingIndicator("Executing actions…");
-    try {
-      const response = await fetch("/api/confirm_intents", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          intents: currPending,
-          action_log: actionLogState,
-          chat_context: chatContextState,
-          llm_model: modelSelect ? modelSelect.value : "gemma3:4b"
-        }),
-      });
+		chatHistory.appendChild(msgDiv);
+		scrollToBottom();
 
-      if (!response.ok) throw new Error(`Server error: ${response.status}`);
-      const data = await response.json();
-      syncState(data);
-      removeTypingIndicator(typingEl);
-      appendAgentMessage(data); 
-      
-    } catch (err) {
-      console.error("Confirmation error:", err);
-      removeTypingIndicator(typingEl);
-      appendAgentMessage({
-        error: true,
-        stage: "framework",
-        message: err.message
-      });
-    } finally {
-      resetConfirmationState();
-    }
-  }
+		if (data.requires_confirmation) {
+			isAwaitingConfirmation = true;
+			pendingIntents = data.pending_intents || [];
+			textInput.disabled = true;
+			micBtn.disabled = true;
+			runBtn.disabled = true;
 
-  function handleCancel(panelMsgDiv) {
-    const panel = panelMsgDiv.querySelector('.confirm-panel');
-    if (panel) {
-      panel.innerHTML = `<div class="confirm-text" style="color: var(--text-muted)">❌ File operation cancelled.</div>`;
-    }
-    resetConfirmationState();
-  }
+			const confirmBtn = msgDiv.querySelector("#btn-confirm-intents");
+			const cancelBtn = msgDiv.querySelector("#btn-cancel-intents");
 
-  function resetConfirmationState() {
-    isAwaitingConfirmation = false;
-    pendingIntents = [];
-    textInput.disabled = false;
-    micBtn.disabled = false;
-    if (textInput.value.trim().length > 0 || currentAudioBlob) {
-      runBtn.disabled = false;
-    }
-    textInput.focus();
-  }
+			confirmBtn.addEventListener("click", () => handleConfirm(msgDiv));
+			cancelBtn.addEventListener("click", () => handleCancel(msgDiv));
+		}
+	}
 
-  // Utility to escape HTML and prevent injection
-  function escapeHTML(str) {
-    if (typeof str !== 'string') return str;
-    return str.replace(/[&<>'"]/g, 
-      tag => ({
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        "'": '&#39;',
-        '"': '&quot;'
-      }[tag] || tag)
-    );
-  }
+	async function handleConfirm(panelMsgDiv) {
+		const currPending = pendingIntents;
+		const panel = panelMsgDiv.querySelector(".confirm-panel");
+		if (panel) {
+			panel.innerHTML = `<div class="confirm-text" style="color: var(--text-muted)">✅ Confirmed. Executing...</div>`;
+		}
 
-  // --- Session Memory State & UI ------------------------------------------
+		const typingEl = showTypingIndicator("Executing actions…");
+		try {
+			const response = await fetch("/api/confirm_intents", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					intents: currPending,
+					action_log: actionLogState,
+					chat_context: chatContextState,
+					llm_model: modelSelect ? modelSelect.value : "gemma3:4b",
+				}),
+			});
 
-  const clearSessionBtn = document.getElementById("clear-session-btn");
-  const historyCount = document.getElementById("history-count");
-  const historyTbody = document.getElementById("history-tbody");
+			if (!response.ok) throw new Error(`Server error: ${response.status}`);
+			const data = await response.json();
+			syncState(data);
+			removeTypingIndicator(typingEl);
+			appendAgentMessage(data);
+		} catch (err) {
+			console.error("Confirmation error:", err);
+			removeTypingIndicator(typingEl);
+			appendAgentMessage({
+				error: true,
+				stage: "framework",
+				message: err.message,
+			});
+		} finally {
+			resetConfirmationState();
+		}
+	}
 
-  if (clearSessionBtn) {
-    clearSessionBtn.addEventListener("click", (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      actionLogState = [];
-      chatContextState = [];
-      renderHistoryPanel();
-    });
-  }
+	function handleCancel(panelMsgDiv) {
+		const panel = panelMsgDiv.querySelector(".confirm-panel");
+		if (panel) {
+			panel.innerHTML = `<div class="confirm-text" style="color: var(--text-muted)">❌ File operation cancelled.</div>`;
+		}
+		resetConfirmationState();
+	}
 
-  function syncState(data) {
-    if (data.action_log) actionLogState = data.action_log;
-    if (data.chat_context) chatContextState = data.chat_context;
-    renderHistoryPanel();
-  }
+	function resetConfirmationState() {
+		isAwaitingConfirmation = false;
+		pendingIntents = [];
+		textInput.disabled = false;
+		micBtn.disabled = false;
+		if (textInput.value.trim().length > 0 || currentAudioBlob) {
+			runBtn.disabled = false;
+		}
+		textInput.focus();
+	}
 
-  function renderHistoryPanel() {
-    if (!historyCount || !historyTbody) return;
-    
-    historyCount.textContent = actionLogState.length;
-    
-    if (actionLogState.length === 0) {
-      historyTbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 1rem;">No actions recorded this session.</td></tr>`;
-      return;
-    }
-    
-    let html = "";
-    // Render in reverse chronological or just chronological?
-    // Let's keep it chronological (append at bottom)
-    actionLogState.forEach(item => {
-      const statusClass = item.status === "success" ? "success" : "error";
-      const statusText = item.status === "success" ? "Success" : "Failed";
-      html += `
+	// Utility to escape HTML and prevent injection
+	function escapeHTML(str) {
+		if (typeof str !== "string") return str;
+		return str.replace(
+			/[&<>'"]/g,
+			(tag) =>
+				({
+					"&": "&amp;",
+					"<": "&lt;",
+					">": "&gt;",
+					"'": "&#39;",
+					'"': "&quot;",
+				})[tag] || tag,
+		);
+	}
+
+	// --- Session Memory State & UI ------------------------------------------
+
+	const clearSessionBtn = document.getElementById("clear-session-btn");
+	const historyCount = document.getElementById("history-count");
+	const historyTbody = document.getElementById("history-tbody");
+
+	if (clearSessionBtn) {
+		clearSessionBtn.addEventListener("click", (e) => {
+			e.preventDefault();
+			e.stopPropagation();
+			actionLogState = [];
+			chatContextState = [];
+			renderHistoryPanel();
+		});
+	}
+
+	function syncState(data) {
+		if (data.action_log) actionLogState = data.action_log;
+		if (data.chat_context) chatContextState = data.chat_context;
+		renderHistoryPanel();
+	}
+
+	function renderHistoryPanel() {
+		if (!historyCount || !historyTbody) return;
+
+		historyCount.textContent = actionLogState.length;
+
+		if (actionLogState.length === 0) {
+			historyTbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted" style="padding: 1rem;">No actions recorded this session.</td></tr>`;
+			return;
+		}
+
+		let html = "";
+		// Render in reverse chronological or just chronological?
+		// Let's keep it chronological (append at bottom)
+		actionLogState.forEach((item) => {
+			const statusClass = item.status === "success" ? "success" : "error";
+			const statusText = item.status === "success" ? "Success" : "Failed";
+			html += `
         <tr>
           <td style="white-space: nowrap;">${escapeHTML(item.timestamp)}</td>
           <td>${escapeHTML(item.transcript)}</td>
@@ -623,9 +639,8 @@
           <td><span class="status-badge ${statusClass}">${statusText}</span></td>
         </tr>
       `;
-    });
-    
-    historyTbody.innerHTML = html;
-  }
+		});
 
+		historyTbody.innerHTML = html;
+	}
 })();
