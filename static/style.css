@@ -393,25 +393,37 @@ pre.json-block {
 .run-btn.active-text { animation: pulse-soft 2s infinite; }
 .run-icon { width: 20px; height: 20px; margin-left: 2px; } /* slight generic offset for play/send icons */
 
-/* --- Loading Overlay ----------------------------------------------------- */
-.loading-overlay {
-  display: none;
-  position: absolute; /* relative to container, not fixed */
-  inset: 0;
-  z-index: 100;
-  background: rgba(10, 10, 15, 0.7);
-  backdrop-filter: blur(4px);
+/* --- Typing Indicator ---------------------------------------------------- */
+.typing-indicator {
+  display: flex;
   align-items: center;
-  justify-content: center;
-  border-radius: var(--radius-lg); /* same as card if you apply it to the card. Here it overlays app layout */
+  gap: 5px;
+  padding: 0.2rem 0;
 }
 
-.loading-overlay.visible { display: flex; }
-.loader { display: flex; flex-direction: column; align-items: center; gap: 1rem; }
-.loader-ring { width: 44px; height: 44px; border: 3px solid rgba(124, 92, 252, 0.15); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
-@keyframes spin { to { transform: rotate(360deg); } }
-.loader-text { font-size: 0.9rem; font-weight: 500; color: var(--text-secondary); animation: pulse-text 2s ease-in-out infinite; }
-@keyframes pulse-text { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+.typing-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  animation: typingBounce 1.4s infinite ease-in-out both;
+}
+
+.typing-dot:nth-child(1) { animation-delay: -0.32s; }
+.typing-dot:nth-child(2) { animation-delay: -0.16s; }
+.typing-dot:nth-child(3) { animation-delay: 0s; }
+
+@keyframes typingBounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40% { transform: translateY(-5px); }
+}
+
+.typing-text {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  margin-left: 0.5rem;
+  font-style: italic;
+}
 
 /* --- Animations ---------------------------------------------------------- */
 @keyframes fadeUp {

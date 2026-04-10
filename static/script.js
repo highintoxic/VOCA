@@ -17,9 +17,6 @@
   const textInput = document.getElementById("text-input");
   const runBtn = document.getElementById("run-btn");
   const chatHistory = document.getElementById("chat-history");
-  
-  const loadingOverlay = document.getElementById("loading-overlay");
-  const loaderText = document.getElementById("loader-text");
 
   // --- State --------------------------------------------------------------
   let mediaRecorder = null;
@@ -153,17 +150,20 @@
   });
 
   async function processText(text) {
-    loadingOverlay.classList.add("visible");
     runBtn.disabled = true;
     textInput.disabled = true;
     appendUserMessage(text);
     textInput.value = "";
 
-    const stages = ["Classifying intent…", "Executing action…", "Preparing results…"];
+    const typingEl = showTypingIndicator("Classifying intent…");
+
+    const stages = ["Executing action…", "Preparing results…"];
     let stageIdx = 0;
     const stageInterval = setInterval(() => {
-      stageIdx = Math.min(stageIdx + 1, stages.length - 1);
-      loaderText.textContent = stages[stageIdx];
+      if (stageIdx < stages.length) {
+        updateTypingIndicator(typingEl, stages[stageIdx]);
+        stageIdx++;
+      }
     }, 2000);
 
     try {
@@ -185,23 +185,27 @@
       });
     } finally {
       clearInterval(stageInterval);
-      loadingOverlay.classList.remove("visible");
+      removeTypingIndicator(typingEl);
       textInput.disabled = false;
       textInput.focus();
       runBtn.disabled = true;
-      loaderText.textContent = "Processing…";
     }
   }
 
   async function processAudio() {
-    loadingOverlay.classList.add("visible");
     runBtn.disabled = true;
+    
+    // For audio, we haven't transcribed yet, so just show the typing bubble
+    // User bubble will be inserted after STT finishes
+    const typingEl = showTypingIndicator("Transcribing audio…");
 
-    const stages = ["Transcribing audio…", "Classifying intent…", "Executing action…", "Preparing results…"];
+    const stages = ["Classifying intent…", "Executing action…", "Preparing results…"];
     let stageIdx = 0;
     const stageInterval = setInterval(() => {
-      stageIdx = Math.min(stageIdx + 1, stages.length - 1);
-      loaderText.textContent = stages[stageIdx];
+      if (stageIdx < stages.length) {
+        updateTypingIndicator(typingEl, stages[stageIdx]);
+        stageIdx++;
+      }
     }, 3000);
 
     try {
@@ -216,6 +220,8 @@
       if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
       
+      // Remove typing bubble briefly so User Bubble appears correctly before Agent Response
+      removeTypingIndicator(typingEl);
       appendUserMessage(data.transcript || "(Empty transcript)");
       appendAgentMessage(data);
 
@@ -227,18 +233,54 @@
       });
     } finally {
       clearInterval(stageInterval);
-      loadingOverlay.classList.remove("visible");
+      // In case of error it might still be there
+      if (document.body.contains(typingEl)) {
+         removeTypingIndicator(typingEl);
+      }
       
       // Reset inputs
       currentAudioBlob = null;
       uploadLabel.classList.remove("has-file");
       uploadLabel.title = "Upload an audio file";
       runBtn.disabled = true;
-      loaderText.textContent = "Processing…";
     }
   }
 
   // --- Chat UI Creation ---------------------------------------------------
+
+  function showTypingIndicator(initialText) {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "message agent typing-msg";
+    msgDiv.innerHTML = `
+      <div class="avatar">🎙️</div>
+      <div class="bubble">
+        <p class="role-title">Voca</p>
+        <div class="bubble-content" style="padding: 0.8rem 1.2rem;">
+          <div class="typing-indicator">
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <div class="typing-dot"></div>
+            <span class="typing-text">${escapeHTML(initialText)}</span>
+          </div>
+        </div>
+      </div>
+    `;
+    chatHistory.appendChild(msgDiv);
+    scrollToBottom();
+    return msgDiv;
+  }
+
+  function updateTypingIndicator(element, text) {
+    if (!element) return;
+    const textEl = element.querySelector(".typing-text");
+    if (textEl) textEl.textContent = text;
+  }
+
+  function removeTypingIndicator(element) {
+    if (element && element.parentNode) {
+      element.parentNode.removeChild(element);
+    }
+  }
 
   function scrollToBottom() {
     setTimeout(() => {
