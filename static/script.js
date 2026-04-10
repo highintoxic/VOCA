@@ -12,9 +12,9 @@
   const timerText = document.getElementById("timer-text");
 
   const fileInput = document.getElementById("file-input");
-  const uploadLabel = document.querySelector(".upload-label");
-  const fileNameEl = document.getElementById("file-name");
+  const uploadLabel = document.getElementById("upload-label");
 
+  const textInput = document.getElementById("text-input");
   const runBtn = document.getElementById("run-btn");
   const chatHistory = document.getElementById("chat-history");
   
@@ -110,12 +110,32 @@
 
     currentAudioBlob = file;
     currentFileName = file.name;
-    fileNameEl.textContent = file.name;
     uploadLabel.classList.add("has-file");
+    uploadLabel.title = file.name;
+    textInput.value = ""; // clear text if uploading audio
 
-    micLabel.textContent = "Record Audio";
-    micLabel.style.color = "";
     enableRunButton();
+  });
+
+  // --- Text Input ---------------------------------------------------------
+  textInput.addEventListener("input", () => {
+    if (textInput.value.trim().length > 0) {
+      enableRunButton();
+      // Optionally clear audio if they start typing
+      if (currentAudioBlob && !isRecording) {
+        currentAudioBlob = null;
+        fileInput.value = "";
+        uploadLabel.classList.remove("has-file");
+      }
+    } else if (!currentAudioBlob) {
+      runBtn.disabled = true;
+    }
+  });
+
+  textInput.addEventListener("keypress", (e) => {
+    if (e.key === "Enter" && !runBtn.disabled) {
+      runBtn.click();
+    }
   });
 
   // --- Run / Processing ---------------------------------------------------
@@ -124,9 +144,54 @@
   }
 
   runBtn.addEventListener("click", async () => {
-    if (!currentAudioBlob) return;
-    await processAudio();
+    const textVal = textInput.value.trim();
+    if (textVal) {
+      await processText(textVal);
+    } else if (currentAudioBlob) {
+      await processAudio();
+    }
   });
+
+  async function processText(text) {
+    loadingOverlay.classList.add("visible");
+    runBtn.disabled = true;
+    textInput.disabled = true;
+    appendUserMessage(text);
+    textInput.value = "";
+
+    const stages = ["Classifying intent…", "Executing action…", "Preparing results…"];
+    let stageIdx = 0;
+    const stageInterval = setInterval(() => {
+      stageIdx = Math.min(stageIdx + 1, stages.length - 1);
+      loaderText.textContent = stages[stageIdx];
+    }, 2000);
+
+    try {
+      const response = await fetch("/api/process_text", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text: text }),
+      });
+
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
+      const data = await response.json();
+      appendAgentMessage(data);
+
+    } catch (err) {
+      console.error("Text Pipeline error:", err);
+      appendAgentMessage({
+        action: "error",
+        result: `❌ Error: ${err.message}`
+      });
+    } finally {
+      clearInterval(stageInterval);
+      loadingOverlay.classList.remove("visible");
+      textInput.disabled = false;
+      textInput.focus();
+      runBtn.disabled = true;
+      loaderText.textContent = "Processing…";
+    }
+  }
 
   async function processAudio() {
     loadingOverlay.classList.add("visible");
@@ -166,10 +231,8 @@
       
       // Reset inputs
       currentAudioBlob = null;
-      micLabel.textContent = "Record Audio";
-      micLabel.style.color = "";
-      fileNameEl.textContent = "Upload file";
       uploadLabel.classList.remove("has-file");
+      uploadLabel.title = "Upload an audio file";
       runBtn.disabled = true;
       loaderText.textContent = "Processing…";
     }

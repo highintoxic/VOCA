@@ -49,49 +49,42 @@
       <div class="card input-card">
         <div class="input-modes">
           <!-- Microphone -->
-          <div class="mic-area">
-            <button class="mic-btn" id="mic-btn" title="Click to record">
-              <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <line x1="12" y1="19" x2="12" y2="23"/>
-                <line x1="8" y1="23" x2="16" y2="23"/>
-              </svg>
-              <div class="pulse-ring"></div>
-            </button>
-            <div class="mic-status">
-              <p class="mic-label" id="mic-label">Record Audio</p>
-              <div class="recording-timer" id="recording-timer">
-                <span class="rec-dot"></span>
-                <span id="timer-text">00:00</span>
-              </div>
+          <button class="mic-btn" id="mic-btn" title="Click to record audio">
+            <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            <div class="pulse-ring"></div>
+            <div class="recording-timer" id="recording-timer">
+              <span id="timer-text">00:00</span>
             </div>
-          </div>
+          </button>
 
-          <div class="divider-or"></div>
+          <!-- Text Input -->
+          <div class="text-area">
+            <input type="text" id="text-input" class="text-input" placeholder="Type a message or use voice..." autocomplete="off" />
+          </div>
 
           <!-- File Upload -->
           <div class="upload-area" id="upload-area">
             <input type="file" id="file-input" accept="audio/*" hidden />
-            <label for="file-input" class="upload-label">
-              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <label for="file-input" class="upload-label compact" id="upload-label" title="Upload an audio file">
+              <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                 <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
                 <polyline points="17 8 12 3 7 8"/>
                 <line x1="12" y1="3" x2="12" y2="15"/>
               </svg>
-              <span id="file-name">Upload file</span>
             </label>
           </div>
 
           <!-- Run Button -->
-          <div class="run-area">
-            <button class="run-btn" id="run-btn" disabled>
-              <svg class="run-icon" viewBox="0 0 24 24" fill="currentColor">
-                <polygon points="5 3 19 12 5 21 5 3"/>
-              </svg>
-              <span>Send</span>
-            </button>
-          </div>
+          <button class="run-btn" id="run-btn" disabled title="Send command">
+            <svg class="run-icon" viewBox="0 0 24 24" fill="currentColor">
+              <polygon points="5 3 19 12 5 21 5 3"/>
+            </svg>
+          </button>
         </div>
       </div>
     </section>

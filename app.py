@@ -16,6 +16,7 @@ import aiofiles
 import uvicorn
 from fastapi import FastAPI, UploadFile, File, Request
 from fastapi.responses import HTMLResponse, FileResponse
+from pydantic import BaseModel
 
 # ---------------------------------------------------------------------------
 # Logging configuration — must be set up before any module imports that log
@@ -111,6 +112,29 @@ async def process_audio(audio: UploadFile = File(...)):
 
     return result
 
+class TextRequest(BaseModel):
+    text: str
+
+@app.post("/api/process_text")
+async def process_text_api(request: TextRequest):
+    """
+    Accept raw text input, bypass STT, and run the pipeline.
+    """
+    from pipeline import process_text_command
+    try:
+        t0 = time.perf_counter()
+        result = process_text_command(request.text)
+        elapsed = time.perf_counter() - t0
+        logger.info("📤 Returning result (total API time: %.2fs)", elapsed)
+        return result
+    except Exception as e:
+        logger.error("❌ Unhandled error in /api/process_text: %s", e, exc_info=True)
+        return {
+            "transcript": request.text,
+            "intent": {},
+            "action": "",
+            "result": f"❌ Error: {e}",
+        }
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="0.0.0.0", port=7860, reload=False)

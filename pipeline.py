@@ -100,3 +100,56 @@ def run_pipeline(audio_input) -> dict:
     logger.info("═" * 50)
 
     return result
+
+def process_text_command(text_input: str) -> dict:
+    """
+    Execute the pipeline starting directly from text (bypassing STT).
+    """
+    result = {
+        "transcript": text_input.strip(),
+        "intent": {},
+        "action": "",
+        "result": "",
+    }
+
+    pipeline_start = time.perf_counter()
+    logger.info("═" * 50)
+    logger.info("🚀 Text Pipeline started")
+    logger.info("   Text input: %s", text_input[:120])
+
+    # --- Stage 2: Intent Classification ---
+    try:
+        logger.info("─" * 40)
+        logger.info("🧠 Stage 2: Intent Classification")
+        t0 = time.perf_counter()
+        intent_obj = classify_intent(result["transcript"])
+        elapsed = time.perf_counter() - t0
+        result["intent"] = intent_obj
+        result["action"] = intent_obj.get("intent", "unknown")
+        logger.info("   ✅ Intent: %s", intent_obj.get("intent"))
+        logger.info("   Params: %s", {k: v for k, v in intent_obj.items() if k != "intent"})
+        logger.info("   ⏱  Classification took %.2fs", elapsed)
+    except Exception as e:
+        logger.error("   ❌ Intent classification failed: %s", e, exc_info=True)
+        result["result"] = f"❌ Intent Classification Error: {e}"
+        return result
+
+    # --- Stage 3: Tool Execution ---
+    try:
+        logger.info("─" * 40)
+        logger.info("⚡ Stage 3: Tool Execution → %s", result["action"])
+        t0 = time.perf_counter()
+        result["result"] = dispatch(intent_obj)
+        elapsed = time.perf_counter() - t0
+        logger.info("   ✅ Result preview: %s", str(result["result"])[:150])
+        logger.info("   ⏱  Execution took %.2fs", elapsed)
+    except Exception as e:
+        logger.error("   ❌ Tool execution failed: %s", e, exc_info=True)
+        result["result"] = f"❌ Tool Execution Error: {e}"
+
+    total = time.perf_counter() - pipeline_start
+    logger.info("─" * 40)
+    logger.info("🏁 Text Pipeline complete in %.2fs", total)
+    logger.info("═" * 50)
+
+    return result
