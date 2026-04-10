@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Voca — Voice AI Agent</title>
+  <meta name="description" content="A fully local, privacy-preserving voice-controlled AI agent." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/style.css" />
+</head>
+<body>
+  <!-- Animated background orbs -->
+  <div class="bg-orbs">
+    <div class="orb orb-1"></div>
+    <div class="orb orb-2"></div>
+    <div class="orb orb-3"></div>
+  </div>
+
+  <main class="container">
+    <!-- Header -->
+    <header class="header" id="header">
+      <div class="logo">
+        <span class="logo-icon">🎙️</span>
+        <h1>Voca</h1>
+      </div>
+      <p class="tagline">Voice-Controlled AI Agent &mdash; Fully Local, Fully Private</p>
+    </header>
+
+    <!-- Input Section -->
+    <section class="card input-card" id="input-section">
+      <h2 class="card-title">
+        <span class="card-icon">🔊</span>
+        Audio Input
+      </h2>
+
+      <div class="input-modes">
+        <!-- Microphone -->
+        <div class="mic-area">
+          <button class="mic-btn" id="mic-btn" title="Click to record">
+            <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="23"/>
+              <line x1="8" y1="23" x2="16" y2="23"/>
+            </svg>
+            <div class="pulse-ring"></div>
+          </button>
+          <p class="mic-label" id="mic-label">Click to record</p>
+          <div class="recording-timer" id="recording-timer">
+            <span class="rec-dot"></span>
+            <span id="timer-text">00:00</span>
+          </div>
+        </div>
+
+        <div class="divider-or">
+          <span>OR</span>
+        </div>
+
+        <!-- File Upload -->
+        <div class="upload-area" id="upload-area">
+          <input type="file" id="file-input" accept="audio/*" hidden />
+          <label for="file-input" class="upload-label">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <span>Drop audio file or click to browse</span>
+            <span class="upload-hint">.wav, .mp3, .ogg, .webm</span>
+          </label>
+          <p class="file-name" id="file-name"></p>
+        </div>
+      </div>
+
+      <button class="run-btn" id="run-btn" disabled>
+        <svg class="run-icon" viewBox="0 0 24 24" fill="currentColor">
+          <polygon points="5 3 19 12 5 21 5 3"/>
+        </svg>
+        <span>Run Agent</span>
+      </button>
+    </section>
+
+    <!-- Results Section -->
+    <section class="results" id="results-section">
+      <!-- Transcript -->
+      <div class="card result-card" id="transcript-card">
+        <h3 class="card-title">
+          <span class="card-icon">📝</span>
+          Transcription
+          <span class="stage-badge">Stage 1</span>
+        </h3>
+        <div class="result-content">
+          <p class="result-text placeholder" id="transcript-text">Waiting for audio…</p>
+        </div>
+      </div>
+
+      <!-- Intent -->
+      <div class="card result-card" id="intent-card">
+        <h3 class="card-title">
+          <span class="card-icon">🧠</span>
+          Detected Intent
+          <span class="stage-badge">Stage 2</span>
+        </h3>
+        <div class="result-content">
+          <pre class="result-code placeholder" id="intent-json">{ }</pre>
+        </div>
+      </div>
+
+      <!-- Action -->
+      <div class="card result-card" id="action-card">
+        <h3 class="card-title">
+          <span class="card-icon">⚡</span>
+          Action Taken
+          <span class="stage-badge">Stage 3</span>
+        </h3>
+        <div class="result-content">
+          <p class="result-text placeholder" id="action-text">—</p>
+        </div>
+      </div>
+
+      <!-- Result -->
+      <div class="card result-card" id="result-card">
+        <h3 class="card-title">
+          <span class="card-icon">📋</span>
+          Result / Output
+          <span class="stage-badge">Stage 4</span>
+        </h3>
+        <div class="result-content">
+          <pre class="result-code placeholder" id="result-output">—</pre>
+        </div>
+      </div>
+    </section>
+
+    <!-- Loading overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+      <div class="loader">
+        <div class="loader-ring"></div>
+        <p class="loader-text" id="loader-text">Processing…</p>
+      </div>
+    </div>
+  </main>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>

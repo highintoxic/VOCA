@@ -56,7 +56,7 @@ ollama list   # Should show gemma3:4b
 uv run python app.py
 ```
 
-This launches a Gradio web interface at `http://localhost:7860`. Open it in your browser, record or upload audio, and click **Run Agent**.
+This launches a FastAPI server at `http://localhost:7860`. Open it in your browser, record or upload audio, and click **Run Agent**.
 
 ---
 
@@ -86,7 +86,7 @@ Audio Input → STT (faster-whisper) → Transcribed Text
     → Intent Classification (gemma3:4b via Ollama, JSON output)
     → Tool Dispatcher (Python switch logic)
     → Result (file created / code written / summary shown)
-    → UI Display (Gradio)
+    → UI Display (FastAPI + Custom Frontend)
 ```
 
 ---
@@ -177,14 +177,18 @@ If your hardware does not support CUDA or has insufficient VRAM, you can:
 
 ```
 Voca/
-├── app.py          ← Gradio UI entry point
-├── stt.py          ← Speech-to-Text module (faster-whisper)
-├── intent.py       ← Intent classification (gemma3:4b via Ollama)
-├── tools.py        ← Tool execution + path safety
-├── pipeline.py     ← Orchestrator wiring all modules
-├── output/         ← ALL generated files go here (sandboxed)
-├── pyproject.toml  ← Project config & dependencies (uv)
-└── README.md       ← This file
+├── app.py              ← FastAPI backend entry point
+├── static/
+│   ├── index.html      ← Custom web UI
+│   ├── style.css       ← Premium dark theme with glassmorphism
+│   └── script.js       ← Mic recording, uploads, API calls
+├── stt.py              ← Speech-to-Text module (faster-whisper)
+├── intent.py           ← Intent classification (gemma3:4b via Ollama)
+├── tools.py            ← Tool execution + path safety
+├── pipeline.py         ← Orchestrator wiring all modules
+├── output/             ← ALL generated files go here (sandboxed)
+├── pyproject.toml      ← Project config & dependencies (uv)
+└── README.md           ← This file
 ```
 
 ---
@@ -195,7 +199,7 @@ Voca/
 |---|---|---|
 | STT | `faster-whisper` + `large-v3-turbo` | 4–6× faster than HF pipeline; float16 CUDA; open-source |
 | LLM | `gemma3:4b` via Ollama | Strong instruction-following; excellent JSON output; 4B params |
-| UI | Gradio (`gr.Blocks`) | Native mic+upload audio; built for ML pipelines |
+| UI | FastAPI + Custom HTML/CSS/JS | Full design control; premium glassmorphism dark theme |
 | Environment | `uv` | Fast, modern Python package manager |
 | Audio I/O | `sounddevice` + `soundfile` | Lightweight; no system deps |
 
