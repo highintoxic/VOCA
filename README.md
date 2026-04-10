@@ -32,6 +32,17 @@ When using Voca, interactions follow a clear, predictable flow that ensures cont
 
 ---
 
+## 🛠️ Features & Tool Calls
+
+The language model interfaces exclusively with highly deterministic Python functions mapped in `tools.py`. The intent classifier structures your requests into one of four distinct actionable items:
+
+- 📁 **`create_file`**: Instantiates a blank file or directory strictly inside the `output/` sandbox directory. This is useful for initializing folder structures before writing code to them.
+- 💻 **`write_code`**: Given a description and a targeted filename, this spins up the localized LLM system contextually as a "code generator", strips out all markdown boundaries securely, and injects raw script logic onto the hard drive structure.
+- 📄 **`summarize`**: Bypasses the local hard drive, pulling text input dynamically into the LLM system prompt tuned explicitly for short, bulleted summarization before piping it back to the active chat stream.
+- 💬 **`general_chat`**: The fallback safety boundary for when intents fail parsing or when you simply want to ask the agent an active question. Chat contexts are passed downstream to ensure conversations maintain memory limits of 20 rolling frames.
+
+---
+
 ## ⚙ Hardware Workarounds & Design Constraints
 
 Operating Local LLMs alongside localized Speech-To-Text processing engines presents rigid hardware execution limits. The following modifications were integrated to keep overhead incredibly fast:
