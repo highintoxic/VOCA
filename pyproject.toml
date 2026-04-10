@@ -1,0 +1,13 @@
+[project]
+name = "voca"
+version = "0.1.0"
+description = "A fully local, privacy-preserving voice-controlled AI agent"
+requires-python = ">=3.12"
+dependencies = [
+    "faster-whisper>=1.1.0",
+    "gradio>=5.0.0",
+    "ollama>=0.4.0",
+    "sounddevice>=0.5.0",
+    "numpy>=1.26.0",
+    "soundfile>=0.12.0",
+]
