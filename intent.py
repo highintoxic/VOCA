@@ -34,6 +34,13 @@ Rules:
 • For everything else (greetings, questions, chitchat) → "general_chat".
 • If there are multiple actions, split them into multiple intent objects in the correct order.
 
+Example command: "Create a file called notes.txt and then write a python script called hello.py that prints hello"
+Example output:
+[
+  { "intent": "create_file", "filename": "notes.txt" },
+  { "intent": "write_code", "filename": "hello.py", "language": "python", "description": "print hello" }
+]
+
 Respond ONLY with the JSON array. No markdown, no explanation.
 """
 
