@@ -79,8 +79,11 @@ async def list_models():
     """Return local ollama models."""
     try:
         models_response = ollama.list()
-        # models_response is an object with a "models" list array
-        return {"models": models_response.get("models", [])}
+        if hasattr(models_response, 'models'):
+            model_names = [{"name": m.model} for m in models_response.models]
+        else:
+            model_names = [{"name": m.get("name") or m.get("model")} for m in models_response.get("models", [])]
+        return {"models": model_names}
     except Exception as e:
         logger.error("❌ Error fetching models: %s", e)
         return {"error": True, "message": str(e), "models": []}
