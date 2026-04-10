@@ -1,6 +1,5 @@
 /* =========================================================================
-   Voca — Frontend JavaScript
-   Handles mic recording, file upload, API calls, and result rendering
+   Voca — Frontend JavaScript (Chat Mode)
    ========================================================================= */
 
 (() => {
@@ -13,21 +12,14 @@
   const timerText = document.getElementById("timer-text");
 
   const fileInput = document.getElementById("file-input");
-  const uploadArea = document.getElementById("upload-area");
-  const uploadLabel = uploadArea.querySelector(".upload-label");
+  const uploadLabel = document.querySelector(".upload-label");
   const fileNameEl = document.getElementById("file-name");
 
   const runBtn = document.getElementById("run-btn");
-
-  const transcriptText = document.getElementById("transcript-text");
-  const intentJson = document.getElementById("intent-json");
-  const actionText = document.getElementById("action-text");
-  const resultOutput = document.getElementById("result-output");
-
+  const chatHistory = document.getElementById("chat-history");
+  
   const loadingOverlay = document.getElementById("loading-overlay");
   const loaderText = document.getElementById("loader-text");
-
-  const resultCards = document.querySelectorAll(".result-card");
 
   // --- State --------------------------------------------------------------
   let mediaRecorder = null;
@@ -39,7 +31,6 @@
   let currentFileName = "recording.wav";
 
   // --- Microphone Recording -----------------------------------------------
-
   micBtn.addEventListener("click", async () => {
     if (isRecording) {
       stopRecording();
@@ -51,9 +42,7 @@
   async function startRecording() {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorder = new MediaRecorder(stream, {
-        mimeType: getSupportedMimeType(),
-      });
+      mediaRecorder = new MediaRecorder(stream, { mimeType: getSupportedMimeType() });
       audioChunks = [];
 
       mediaRecorder.ondataavailable = (e) => {
@@ -72,7 +61,7 @@
       mediaRecorder.start();
       isRecording = true;
       micBtn.classList.add("recording");
-      micLabel.textContent = "Click to stop";
+      micLabel.textContent = "Recording...";
       recTimer.classList.add("visible");
       recordingSeconds = 0;
       timerText.textContent = "00:00";
@@ -101,9 +90,8 @@
     recTimer.classList.remove("visible");
     clearInterval(recordingInterval);
 
-    // Clear any file upload
     fileInput.value = "";
-    fileNameEl.textContent = "";
+    fileNameEl.textContent = "Upload file";
     uploadLabel.classList.remove("has-file");
   }
 
@@ -116,48 +104,21 @@
   }
 
   // --- File Upload --------------------------------------------------------
-
   fileInput.addEventListener("change", (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     currentAudioBlob = file;
     currentFileName = file.name;
-    fileNameEl.textContent = `📎 ${file.name}`;
+    fileNameEl.textContent = file.name;
     uploadLabel.classList.add("has-file");
 
-    // Clear mic recording state
-    micLabel.textContent = "Click to record";
+    micLabel.textContent = "Record Audio";
     micLabel.style.color = "";
-
     enableRunButton();
   });
 
-  // Drag & Drop
-  uploadLabel.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    uploadLabel.style.borderColor = "var(--accent)";
-  });
-
-  uploadLabel.addEventListener("dragleave", () => {
-    uploadLabel.style.borderColor = "";
-  });
-
-  uploadLabel.addEventListener("drop", (e) => {
-    e.preventDefault();
-    uploadLabel.style.borderColor = "";
-    const file = e.dataTransfer.files[0];
-    if (file && file.type.startsWith("audio/")) {
-      currentAudioBlob = file;
-      currentFileName = file.name;
-      fileNameEl.textContent = `📎 ${file.name}`;
-      uploadLabel.classList.add("has-file");
-      enableRunButton();
-    }
-  });
-
-  // --- Run Button ---------------------------------------------------------
-
+  // --- Run / Processing ---------------------------------------------------
   function enableRunButton() {
     runBtn.disabled = false;
   }
@@ -168,17 +129,10 @@
   });
 
   async function processAudio() {
-    // Show loading
     loadingOverlay.classList.add("visible");
     runBtn.disabled = true;
-    clearResults();
 
-    const stages = [
-      "Transcribing audio…",
-      "Classifying intent…",
-      "Executing action…",
-      "Preparing results…",
-    ];
+    const stages = ["Transcribing audio…", "Classifying intent…", "Executing action…", "Preparing results…"];
     let stageIdx = 0;
     const stageInterval = setInterval(() => {
       stageIdx = Math.min(stageIdx + 1, stages.length - 1);
@@ -194,91 +148,133 @@
         body: formData,
       });
 
-      if (!response.ok) {
-        throw new Error(`Server error: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`Server error: ${response.status}`);
       const data = await response.json();
-      displayResults(data);
+      
+      appendUserMessage(data.transcript || "(Empty transcript)");
+      appendAgentMessage(data);
+
     } catch (err) {
       console.error("Pipeline error:", err);
-      resultOutput.textContent = `❌ Error: ${err.message}`;
-      resultOutput.classList.remove("placeholder");
+      appendAgentMessage({
+        action: "error",
+        result: `❌ Error: ${err.message}`
+      });
     } finally {
       clearInterval(stageInterval);
       loadingOverlay.classList.remove("visible");
-      runBtn.disabled = false;
+      
+      // Reset inputs
+      currentAudioBlob = null;
+      micLabel.textContent = "Record Audio";
+      micLabel.style.color = "";
+      fileNameEl.textContent = "Upload file";
+      uploadLabel.classList.remove("has-file");
+      runBtn.disabled = true;
+      loaderText.textContent = "Processing…";
     }
   }
 
-  // --- Results ------------------------------------------------------------
+  // --- Chat UI Creation ---------------------------------------------------
 
-  function clearResults() {
-    transcriptText.textContent = "Waiting for audio…";
-    transcriptText.classList.add("placeholder");
-    intentJson.textContent = "{ }";
-    intentJson.classList.add("placeholder");
-    actionText.textContent = "—";
-    actionText.classList.add("placeholder");
-    resultOutput.textContent = "—";
-    resultOutput.classList.add("placeholder");
-
-    resultCards.forEach((card) => card.classList.remove("active"));
+  function scrollToBottom() {
+    setTimeout(() => {
+      chatHistory.scrollTo({
+        top: chatHistory.scrollHeight,
+        behavior: 'smooth'
+      });
+    }, 50);
   }
 
-  function displayResults(data) {
-    // Transcript
-    if (data.transcript) {
-      transcriptText.textContent = data.transcript;
-      transcriptText.classList.remove("placeholder");
-      animateCard(0);
-    }
-
-    // Intent
-    setTimeout(() => {
-      if (data.intent && Object.keys(data.intent).length > 0) {
-        intentJson.textContent = JSON.stringify(data.intent, null, 2);
-        intentJson.classList.remove("placeholder");
-      }
-      animateCard(1);
-    }, 200);
-
-    // Action
-    setTimeout(() => {
-      if (data.action) {
-        actionText.textContent = formatAction(data.action);
-        actionText.classList.remove("placeholder");
-      }
-      animateCard(2);
-    }, 400);
-
-    // Result
-    setTimeout(() => {
-      if (data.result) {
-        resultOutput.textContent = data.result;
-        resultOutput.classList.remove("placeholder");
-      }
-      animateCard(3);
-    }, 600);
+  function appendUserMessage(text) {
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "message user";
+    msgDiv.innerHTML = `
+      <div class="avatar">👤</div>
+      <div class="bubble">
+        <p class="role-title">You</p>
+        <div class="bubble-content">
+          ${escapeHTML(text)}
+        </div>
+      </div>
+    `;
+    chatHistory.appendChild(msgDiv);
+    scrollToBottom();
   }
 
-  function animateCard(index) {
-    const card = resultCards[index];
-    if (!card) return;
-    card.classList.add("active");
-    card.style.transform = "scale(1.01)";
-    setTimeout(() => {
-      card.style.transform = "";
-    }, 300);
-  }
-
-  function formatAction(action) {
-    const icons = {
+  function appendAgentMessage(data) {
+    const { intent, action, result } = data;
+    
+    // Create elements dynamically to inject content safely
+    const msgDiv = document.createElement("div");
+    msgDiv.className = "message agent";
+    
+    // Determine title block for Action
+    const actionIcons = {
       create_file: "📁 Create File",
-      write_code: "💻 Write Code",
-      summarize: "📄 Summarize",
+      write_code: "💻 Code Generation",
+      summarize: "📄 Summary",
       general_chat: "💬 General Chat",
+      error: "❌ Pipeline Error",
+      unknown: "⚠️ Unknown Intent"
     };
-    return icons[action] || action;
+    
+    const actionTitle = actionIcons[action] || action || "Process Result";
+
+    // Build the intent JSON block safely
+    let intentHtml = "";
+    if (intent && Object.keys(intent).length > 0) {
+      intentHtml = `
+        <div class="detail-block">
+          <div class="detail-header">
+            <span>🧠 Intent JSON</span>
+          </div>
+          <div class="detail-body">
+            <pre class="code-block json-block">${escapeHTML(JSON.stringify(intent, null, 2))}</pre>
+          </div>
+        </div>
+      `;
+    }
+
+    // Build Result Block
+    let resultHtml = `
+      <div class="detail-block">
+        <div class="detail-header">
+          <span>📋 ${actionTitle}</span>
+        </div>
+        <div class="detail-body">
+          <pre class="code-block">${escapeHTML(result || "No result generated.")}</pre>
+        </div>
+      </div>
+    `;
+
+    msgDiv.innerHTML = `
+      <div class="avatar">🎙️</div>
+      <div class="bubble">
+        <p class="role-title">Voca</p>
+        <div class="bubble-content">
+          ${intentHtml}
+          ${resultHtml}
+        </div>
+      </div>
+    `;
+    
+    chatHistory.appendChild(msgDiv);
+    scrollToBottom();
   }
+
+  // Utility to escape HTML and prevent injection
+  function escapeHTML(str) {
+    if (typeof str !== 'string') return str;
+    return str.replace(/[&<>'"]/g, 
+      tag => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        "'": '&#39;',
+        '"': '&quot;'
+      }[tag] || tag)
+    );
+  }
+
 })();
