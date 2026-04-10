@@ -19,8 +19,6 @@ from errors import PipelineError
 OUTPUT_DIR = Path(__file__).parent / "output"
 OUTPUT_DIR.mkdir(exist_ok=True)
 
-OLLAMA_MODEL = "gemma3:4b"
-
 
 # ---------------------------------------------------------------------------
 # Path safety
@@ -81,7 +79,7 @@ def create_file(filename: str) -> str:
         raise PipelineError("tool", f"OS file permission error: {e}")
 
 
-def write_code(filename: str, language: str, description: str, chat_context: list) -> str:
+def write_code(filename: str, language: str, description: str, chat_context: list, model: str) -> str:
     """Generate code via Ollama and write it to output/<filename>."""
     logger.info("   💻 write_code: %s (%s) — %s", filename, language, description[:80])
     path = safe_path(filename)
@@ -99,9 +97,8 @@ def write_code(filename: str, language: str, description: str, chat_context: lis
     if chat_context:
         messages.extend(chat_context)
     messages.append({"role": "user", "content": prompt})
-
     response = _chat(
-        model=OLLAMA_MODEL,
+        model=model,
         messages=messages,
     )
 
@@ -131,11 +128,11 @@ def write_code(filename: str, language: str, description: str, chat_context: lis
     return code
 
 
-def summarize(content: str) -> str:
+def summarize(content: str, model: str) -> str:
     """Summarise the given content using Ollama."""
     logger.info("   📄 summarize: %d chars of content", len(content))
     response = _chat(
-        model=OLLAMA_MODEL,
+        model=model,
         messages=[
             {
                 "role": "system",
@@ -150,7 +147,7 @@ def summarize(content: str) -> str:
     return response["message"]["content"]
 
 
-def general_chat(message: str, chat_context: list) -> str:
+def general_chat(message: str, chat_context: list, model: str) -> str:
     """Handle general conversation that has no actionable intent."""
     logger.info("   💬 general_chat: %s", message[:80])
     
@@ -158,9 +155,8 @@ def general_chat(message: str, chat_context: list) -> str:
     if chat_context:
         messages.extend(chat_context)
     messages.append({"role": "user", "content": message})
-    
     response = _chat(
-        model=OLLAMA_MODEL,
+        model=model,
         messages=messages,
     )
     
@@ -179,16 +175,16 @@ def general_chat(message: str, chat_context: list) -> str:
 # ---------------------------------------------------------------------------
 
 _TOOL_MAP = {
-    "create_file": lambda obj, ctx: create_file(obj["filename"]),
-    "write_code": lambda obj, ctx: write_code(
-        obj["filename"], obj["language"], obj["description"], ctx
+    "create_file": lambda obj, ctx, model: create_file(obj["filename"]),
+    "write_code": lambda obj, ctx, model: write_code(
+        obj["filename"], obj["language"], obj["description"], ctx, model
     ),
-    "summarize": lambda obj, ctx: summarize(obj["content"]),
-    "general_chat": lambda obj, ctx: general_chat(obj["message"], ctx),
+    "summarize": lambda obj, ctx, model: summarize(obj["content"], model),
+    "general_chat": lambda obj, ctx, model: general_chat(obj["message"], ctx, model),
 }
 
 
-def dispatch(intent_obj: dict, chat_context: list = None) -> str:
+def dispatch(intent_obj: dict, chat_context: list = None, model: str = "gemma3:4b") -> str:
     """Route an intent object to the correct tool function."""
     if chat_context is None:
         chat_context = []
@@ -201,4 +197,4 @@ def dispatch(intent_obj: dict, chat_context: list = None) -> str:
         raise PipelineError("tool", f"Intent '{intent_key}' is not supported. Try rephrasing.")
 
     logger.info("   Dispatching to tool: %s", intent_key)
-    return handler(intent_obj, chat_context)
+    return handler(intent_obj, chat_context, model)

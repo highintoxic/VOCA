@@ -29,7 +29,7 @@ def _log_action(action_log, intent_obj, transcript=""):
     action_log.append(log_entry)
 
 
-def run_pipeline(audio_input, action_log=None, chat_context=None) -> dict:
+def run_pipeline(audio_input, action_log=None, chat_context=None, llm_model: str = "gemma3:4b") -> dict:
     """
     Execute the full voice-agent pipeline.
     """
@@ -69,7 +69,7 @@ def run_pipeline(audio_input, action_log=None, chat_context=None) -> dict:
         logger.info("─" * 40)
         logger.info("🧠 Stage 2: Intent Classification")
         t0 = time.perf_counter()
-        intent_array = classify_intent(result["transcript"], result["action_log"])
+        intent_array = classify_intent(result["transcript"], result["action_log"], llm_model)
         elapsed = time.perf_counter() - t0
         logger.info("   ⏱  Classification took %.2fs", elapsed)
 
@@ -86,7 +86,7 @@ def run_pipeline(audio_input, action_log=None, chat_context=None) -> dict:
                 
             logger.info("   ▶ Executing action: %s", action)
             t0 = time.perf_counter()
-            tool_res = dispatch(intent_obj, result["chat_context"])
+            tool_res = dispatch(intent_obj, result["chat_context"], llm_model)
             elapsed = time.perf_counter() - t0
             
             result["results"].append({
@@ -123,7 +123,7 @@ def run_pipeline(audio_input, action_log=None, chat_context=None) -> dict:
 
     return result
 
-def process_text_command(text_input: str, action_log=None, chat_context=None) -> dict:
+def process_text_command(text_input: str, action_log=None, chat_context=None, llm_model: str = "gemma3:4b") -> dict:
     """
     Execute the pipeline starting directly from text (bypassing STT).
     """
@@ -147,7 +147,7 @@ def process_text_command(text_input: str, action_log=None, chat_context=None) ->
         logger.info("─" * 40)
         logger.info("🧠 Stage 2: Intent Classification")
         t0 = time.perf_counter()
-        intent_array = classify_intent(result["transcript"], result["action_log"])
+        intent_array = classify_intent(result["transcript"], result["action_log"], llm_model)
         elapsed = time.perf_counter() - t0
         logger.info("   ⏱  Classification took %.2fs", elapsed)
 
@@ -164,7 +164,7 @@ def process_text_command(text_input: str, action_log=None, chat_context=None) ->
                 
             logger.info("   ▶ Executing action: %s", action)
             t0 = time.perf_counter()
-            tool_res = dispatch(intent_obj, result["chat_context"])
+            tool_res = dispatch(intent_obj, result["chat_context"], llm_model)
             elapsed = time.perf_counter() - t0
             
             result["results"].append({
@@ -201,7 +201,7 @@ def process_text_command(text_input: str, action_log=None, chat_context=None) ->
 
     return result
 
-def execute_intents(intent_array: list, action_log=None, chat_context=None) -> dict:
+def execute_intents(intent_array: list, action_log=None, chat_context=None, llm_model: str = "gemma3:4b") -> dict:
     """
     Directly execute an array of intents. Used for Stage 2 confirmation.
     """
@@ -218,7 +218,7 @@ def execute_intents(intent_array: list, action_log=None, chat_context=None) -> d
             action = intent_obj.get("intent", "unknown")
             logger.info("   ▶ Executing action: %s", action)
             t0 = time.perf_counter()
-            tool_res = dispatch(intent_obj, result["chat_context"])
+            tool_res = dispatch(intent_obj, result["chat_context"], llm_model)
             elapsed = time.perf_counter() - t0
             
             result["results"].append({

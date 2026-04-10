@@ -21,9 +21,16 @@
   <div class="app-layout">
     <!-- Header -->
     <header class="header">
-      <div class="logo">
-        <span class="logo-icon">🎙️</span>
-        <h1>Voca</h1>
+      <div class="header-top" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+        <div class="logo">
+          <span class="logo-icon">🎙️</span>
+          <h1>Voca</h1>
+        </div>
+        <div class="header-controls">
+          <select id="model-select" class="model-select">
+            <option value="gemma3:4b">Loading models...</option>
+          </select>
+        </div>
       </div>
       <p class="tagline">Voice-Controlled AI Agent &mdash; Fully Local, Fully Private</p>
     </header>

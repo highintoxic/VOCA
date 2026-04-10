@@ -15,7 +15,6 @@ logger = logging.getLogger(__name__)
 
 import ollama
 
-OLLAMA_MODEL = "gemma3:4b"
 
 FORMAT_SCHEMA = {
   "type": "array",
@@ -77,7 +76,7 @@ User command: {transcript}
 """
 
 
-def classify_intent(transcript: str, action_log=None) -> list:
+def classify_intent(transcript: str, action_log=None, model: str = "gemma3:4b") -> list:
     """
     Classify a transcript into a structured list of intent dicts (compound commands).
 
@@ -102,11 +101,11 @@ def classify_intent(transcript: str, action_log=None) -> list:
 
     # --- First attempt ---
     try:
-        logger.info("   Sending transcript to %s (attempt 1)…", OLLAMA_MODEL)
+        logger.info("   Sending transcript to %s (attempt 1)…", model)
         t0 = time.perf_counter()
         try:
             response = ollama.chat(
-                model=OLLAMA_MODEL,
+                model=model,
                 messages=[
                     {"role": "system", "content": sys_prompt},
                     {"role": "user", "content": transcript},
@@ -135,7 +134,7 @@ def classify_intent(transcript: str, action_log=None) -> list:
     try:
         try:
             response = ollama.chat(
-                model=OLLAMA_MODEL,
+                model=model,
                 messages=[
                     {"role": "system", "content": SYSTEM_PROMPT},
                     {

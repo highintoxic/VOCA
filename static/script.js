@@ -17,6 +17,32 @@
   const textInput = document.getElementById("text-input");
   const runBtn = document.getElementById("run-btn");
   const chatHistory = document.getElementById("chat-history");
+  const modelSelect = document.getElementById("model-select");
+
+  window.addEventListener("DOMContentLoaded", async () => {
+    if (modelSelect) {
+      try {
+        const response = await fetch("/api/models");
+        const data = await response.json();
+        
+        if (data && data.models && data.models.length > 0) {
+          modelSelect.innerHTML = "";
+          data.models.forEach(model => {
+            const option = document.createElement("option");
+            option.value = model.name;
+            option.textContent = model.name;
+            if (model.name === "gemma3:4b") option.selected = true;
+            modelSelect.appendChild(option);
+          });
+        } else {
+          modelSelect.innerHTML = `<option value="gemma3:4b">gemma3:4b</option>`;
+        }
+      } catch (e) {
+        console.error("Failed to load models:", e);
+        modelSelect.innerHTML = `<option value="gemma3:4b">gemma3:4b</option>`;
+      }
+    }
+  });
 
   // --- State --------------------------------------------------------------
   let pendingIntents = [];
@@ -179,7 +205,8 @@
         body: JSON.stringify({ 
           text: text,
           action_log: actionLogState,
-          chat_context: chatContextState
+          chat_context: chatContextState,
+          llm_model: modelSelect ? modelSelect.value : "gemma3:4b"
         }),
       });
 
@@ -225,7 +252,8 @@
       formData.append("audio", currentAudioBlob, currentFileName);
       formData.append("state", JSON.stringify({
         action_log: actionLogState,
-        chat_context: chatContextState
+        chat_context: chatContextState,
+        llm_model: modelSelect ? modelSelect.value : "gemma3:4b"
       }));
 
       const response = await fetch("/api/process", {
@@ -471,7 +499,8 @@
         body: JSON.stringify({ 
           intents: currPending,
           action_log: actionLogState,
-          chat_context: chatContextState
+          chat_context: chatContextState,
+          llm_model: modelSelect ? modelSelect.value : "gemma3:4b"
         }),
       });
 

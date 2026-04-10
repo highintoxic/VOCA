@@ -117,6 +117,22 @@ html, body {
 .logo-icon { font-size: 1.8rem; }
 .tagline { color: var(--text-secondary); font-size: 0.9rem; margin-top: 0.2rem;}
 
+.model-select {
+  background: var(--surface-light);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.4rem 0.8rem;
+  font-family: inherit;
+  font-size: 0.85rem;
+  cursor: pointer;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.model-select:hover {
+  border-color: var(--accent);
+}
 /* --- Chat History -------------------------------------------------------- */
 .chat-history {
   flex: 1;
