@@ -1,222 +1,160 @@
 <!doctype html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8" />
-		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-		<title>Voca — Voice AI Agent</title>
-		<meta
-			name="description"
-			content="A fully local, privacy-preserving voice-controlled AI agent."
-		/>
-		<link rel="preconnect" href="https://fonts.googleapis.com" />
-		<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-		<link
-			href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
-			rel="stylesheet"
-		/>
-		<link
-			href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap"
-			rel="stylesheet"
-		/>
-		<link rel="stylesheet" href="/static/style.css" />
-	</head>
-	<body>
-		<div class="app-layout">
-			<!-- Navigation Header -->
-			<header class="header">
-				<div class="header-inner">
-					<div class="logo-group">
-						<h1 class="logo-title">Voca</h1>
-						<p class="logo-subtitle">Voice AI Agent</p>
-					</div>
-					<div class="nav-controls">
-						<select id="model-select" class="model-select">
-							<option value="gemma3:4b">Loading models...</option>
-						</select>
-						<button
-							class="theme-toggle"
-							id="theme-toggle"
-							title="Toggle dark mode"
-						>
-							<svg
-								class="theme-icon"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-							>
-								<circle cx="12" cy="12" r="5" />
-								<line x1="12" y1="1" x2="12" y2="3" />
-								<line x1="12" y1="21" x2="12" y2="23" />
-								<line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
-								<line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
-								<line x1="1" y1="12" x2="3" y2="12" />
-								<line x1="21" y1="12" x2="23" y2="12" />
-								<line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
-								<line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
-							</svg>
-						</button>
-					</div>
-				</div>
-			</header>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Voca — Voice AI Agent</title>
+    <meta name="description" content="A fully local, privacy-preserving voice-controlled AI agent." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="/static/style.css" />
+  </head>
+  <body>
+    <div class="app-layout">
 
-			<!-- Chat Container -->
-			<main class="chat-container">
-				<div class="chat-history" id="chat-history">
-					<!-- Welcome Message -->
-					<div class="message agent start-message">
-						<div class="avatar">🎙️</div>
-						<div class="bubble">
-							<p class="role-title">Voca</p>
-							<div class="bubble-content">
-								<p>Hello! I'm running locally on your hardware.</p>
-								<p>
-									You can ask me to <strong>create files</strong>,
-									<strong>write code</strong>, <strong>summarize text</strong>,
-									or just have a general chat.
-								</p>
-								<p
-									class="text-muted"
-									style="margin-top: 12px; font-size: 0.875rem"
-								>
-									<em
-										>Try sending an audio command below. All generated files are
-										safely stored in the output/ directory.</em
-									>
-								</p>
-							</div>
-						</div>
-					</div>
-				</div>
-			</main>
+      <!-- ── Header ─────────────────────────────────────────────────── -->
+      <header class="header">
+        <div class="header-inner">
+          <div class="logo-group">
+            <h1 class="logo-title">Voca</h1>
+            <p class="logo-subtitle">Voice AI Agent · Local</p>
+          </div>
+          <div class="nav-controls">
+            <select id="model-select" class="model-select">
+              <option value="gemma3:4b">Loading models…</option>
+            </select>
+            <button class="theme-toggle" id="theme-toggle" title="Toggle dark mode">
+              <svg class="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="5"/>
+                <line x1="12" y1="1" x2="12" y2="3"/>
+                <line x1="12" y1="21" x2="12" y2="23"/>
+                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+                <line x1="1" y1="12" x2="3" y2="12"/>
+                <line x1="21" y1="12" x2="23" y2="12"/>
+                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </header>
 
-			<!-- Input Section -->
-			<section class="input-section">
-				<div class="input-wrapper">
-					<div class="card input-card">
-						<div class="input-modes">
-							<!-- Microphone Button -->
-							<button
-								class="mic-btn"
-								id="mic-btn"
-								title="Click to record audio"
-							>
-								<svg
-									class="mic-icon"
-									viewBox="0 0 24 24"
-									fill="none"
-									stroke="currentColor"
-									stroke-width="2"
-									stroke-linecap="round"
-									stroke-linejoin="round"
-								>
-									<path
-										d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"
-									/>
-									<path d="M19 10v2a7 7 0 0 1-14 0v-2" />
-									<line x1="12" y1="19" x2="12" y2="23" />
-									<line x1="8" y1="23" x2="16" y2="23" />
-								</svg>
-								<div class="recording-timer" id="recording-timer">
-									<span id="timer-text">00:00</span>
-								</div>
-							</button>
+      <!-- ── Chat ───────────────────────────────────────────────────── -->
+      <main class="chat-container">
+        <div class="chat-history" id="chat-history">
 
-							<!-- Text Input -->
-							<div class="text-area">
-								<input
-									type="text"
-									id="text-input"
-									class="text-input"
-									placeholder="Type or use voice..."
-									autocomplete="off"
-								/>
-							</div>
+          <!-- Welcome message -->
+          <div class="message agent start-message">
+            <div class="avatar">AI</div>
+            <div class="bubble">
+              <p class="role-title">Voca</p>
+              <div class="bubble-content">
+                <p>Hello. Running fully on your hardware — no data leaves this machine.</p>
+                <p>
+                  Ask me to <strong>create files</strong>, <strong>write code</strong>,
+                  <strong>summarize text</strong>, or just have a conversation.
+                </p>
+                <p class="text-muted" style="margin-top: 10px; font-size: 0.825rem;">
+                  Send an audio command below. Generated files are stored in <code style="font-family:var(--font-mono);font-size:0.8em;">output/</code>.
+                </p>
+              </div>
+            </div>
+          </div>
 
-							<!-- File Upload -->
-							<div class="upload-area" id="upload-area">
-								<input type="file" id="file-input" accept="audio/*" hidden />
-								<label
-									for="file-input"
-									class="upload-label"
-									id="upload-label"
-									title="Upload an audio file"
-								>
-									<svg
-										class="upload-icon"
-										viewBox="0 0 24 24"
-										fill="none"
-										stroke="currentColor"
-										stroke-width="2"
-										stroke-linecap="round"
-										stroke-linejoin="round"
-									>
-										<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
-										<polyline points="17 8 12 3 7 8" />
-										<line x1="12" y1="3" x2="12" y2="15" />
-									</svg>
-								</label>
-							</div>
+        </div>
+      </main>
 
-							<!-- Send Button (Primary CTA) -->
-							<button
-								class="run-btn"
-								id="run-btn"
-								disabled
-								title="Send command"
-							>
-								<svg class="run-icon" viewBox="0 0 24 24" fill="currentColor">
-									<polygon points="5 3 19 12 5 21 5 3" />
-								</svg>
-							</button>
-						</div>
-					</div>
-				</div>
-			</section>
+      <!-- ── Input ──────────────────────────────────────────────────── -->
+      <section class="input-section">
+        <div class="input-wrapper">
+          <div class="card input-card">
+            <div class="input-modes">
 
-			<!-- Session History Panel -->
-			<div class="session-history-wrapper">
-				<details class="session-history-panel" id="session-history-panel">
-					<summary class="session-history-summary">
-						<span class="summary-title"
-							>Session History · <span id="history-count">0</span> actions</span
-						>
-						<button
-							id="clear-session-btn"
-							class="clear-session-btn"
-							title="Clear Session Memory"
-						>
-							Clear
-						</button>
-					</summary>
-					<div class="session-history-content">
-						<div class="table-responsive">
-							<table class="history-table">
-								<thead>
-									<tr>
-										<th>Time</th>
-										<th>Command</th>
-										<th>Intent</th>
-										<th>File / Data</th>
-										<th>Status</th>
-									</tr>
-								</thead>
-								<tbody id="history-tbody">
-									<tr>
-										<td colspan="5" class="text-center text-muted">
-											No actions recorded this session.
-										</td>
-									</tr>
-								</tbody>
-							</table>
-						</div>
-					</div>
-				</details>
-			</div>
-		</div>
+              <!-- Mic -->
+              <button class="mic-btn" id="mic-btn" title="Record audio">
+                <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <line x1="12" y1="19" x2="12" y2="23"/>
+                  <line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+                <div class="recording-timer" id="recording-timer">
+                  <span id="timer-text">00:00</span>
+                </div>
+              </button>
 
-		<script src="/static/script.js"></script>
-	</body>
+              <!-- Text -->
+              <div class="text-area">
+                <input
+                  type="text"
+                  id="text-input"
+                  class="text-input"
+                  placeholder="Type a command or use voice…"
+                  autocomplete="off"
+                />
+              </div>
+
+              <!-- Upload -->
+              <div class="upload-area" id="upload-area">
+                <input type="file" id="file-input" accept="audio/*" hidden />
+                <label for="file-input" class="upload-label" id="upload-label" title="Upload audio file">
+                  <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                </label>
+              </div>
+
+              <!-- Send -->
+              <button class="run-btn" id="run-btn" disabled title="Send">
+                <svg class="run-icon" viewBox="0 0 24 24" fill="currentColor">
+                  <polygon points="5 3 19 12 5 21 5 3"/>
+                </svg>
+              </button>
+
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── Session History ────────────────────────────────────────── -->
+      <div class="session-history-wrapper">
+        <details class="session-history-panel" id="session-history-panel">
+          <summary class="session-history-summary">
+            <span class="summary-title">
+              Session History · <span id="history-count">0</span> actions
+            </span>
+            <button id="clear-session-btn" class="clear-session-btn" title="Clear session memory">
+              Clear
+            </button>
+          </summary>
+          <div class="session-history-content">
+            <div class="table-responsive">
+              <table class="history-table">
+                <thead>
+                  <tr>
+                    <th>Time</th>
+                    <th>Command</th>
+                    <th>Intent</th>
+                    <th>File / Data</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="history-tbody">
+                  <tr>
+                    <td colspan="5" class="text-center text-muted">No actions recorded this session.</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </details>
+      </div>
+
+    </div>
+    <script src="/static/script.js"></script>
+  </body>
 </html>
