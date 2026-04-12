@@ -45,13 +45,13 @@ def run_pipeline(audio_input, action_log=None, chat_context=None, llm_model: str
 
     pipeline_start = time.perf_counter()
     logger.info("═" * 50)
-    logger.info("🚀 Pipeline started")
+    logger.info("Pipeline started")
     logger.info("   Audio input: %s", audio_input)
 
     try:
         # --- Stage 1: Speech-to-Text ---
         logger.info("─" * 40)
-        logger.info("📢 Stage 1: Speech-to-Text")
+        logger.info("Stage 1: Speech-to-Text")
         t0 = time.perf_counter()
         stt_result = transcribe(audio_input)
         elapsed = time.perf_counter() - t0
@@ -59,23 +59,23 @@ def run_pipeline(audio_input, action_log=None, chat_context=None, llm_model: str
         if stt_result.get("low_confidence"):
             result["low_confidence"] = True
             
-        logger.info("   ✅ Transcript: %s", stt_result["text"][:120])
+        logger.info("   Transcript: %s", stt_result["text"][:120])
         logger.info("   Language: %s (%.1f%% confidence)",
                     stt_result["language"],
                     stt_result["language_probability"] * 100)
-        logger.info("   ⏱  STT took %.2fs", elapsed)
+        logger.info("   STT took %.2fs", elapsed)
 
         # --- Stage 2: Intent Classification ---
         logger.info("─" * 40)
-        logger.info("🧠 Stage 2: Intent Classification")
+        logger.info("Stage 2: Intent Classification")
         t0 = time.perf_counter()
         intent_array = classify_intent(result["transcript"], result["action_log"], llm_model)
         elapsed = time.perf_counter() - t0
-        logger.info("   ⏱  Classification took %.2fs", elapsed)
+        logger.info("   Classification took %.2fs", elapsed)
 
         # --- Stage 3: Tool Execution ---
         logger.info("─" * 40)
-        logger.info("⚡ Stage 3: Tool Execution (%d actions)", len(intent_array))
+        logger.info("Stage 3: Tool Execution (%d actions)", len(intent_array))
         for intent_obj in intent_array:
             action = intent_obj.get("intent", "unknown")
             
@@ -84,7 +84,7 @@ def run_pipeline(audio_input, action_log=None, chat_context=None, llm_model: str
                 result["pending_intents"].append(intent_obj)
                 continue
                 
-            logger.info("   ▶ Executing action: %s", action)
+            logger.info("   Executing action: %s", action)
             t0 = time.perf_counter()
             tool_res = dispatch(intent_obj, result["chat_context"], llm_model)
             elapsed = time.perf_counter() - t0
@@ -95,7 +95,7 @@ def run_pipeline(audio_input, action_log=None, chat_context=None, llm_model: str
                 "result": tool_res
             })
             _log_action(result["action_log"], intent_obj, result["transcript"])
-            logger.info("   ✅ Executed %s in %.2fs. Result preview: %s", action, elapsed, str(tool_res)[:100])
+            logger.info("   Executed %s in %.2fs. Result preview: %s", action, elapsed, str(tool_res)[:100])
             
         if result["pending_intents"]:
             result["requires_confirmation"] = True
@@ -112,15 +112,15 @@ def run_pipeline(audio_input, action_log=None, chat_context=None, llm_model: str
             result["confirmation_message"] = f"About to write {len(result['pending_intents'])} file(s): {joined_files}. Proceed?"
             
     except PipelineError as e:
-        logger.error("   ❌ Pipeline Error [%s]: %s", e.stage, e.message)
+        logger.error("   Pipeline Error [%s]: %s", e.stage, e.message)
         return {"error": True, "stage": e.stage, "message": e.message}
     except Exception as e:
-        logger.error("   ❌ Unhandled exception: %s", e, exc_info=True)
+        logger.error("   Unhandled exception: %s", e, exc_info=True)
         return {"error": True, "stage": "framework", "message": f"Unhandled error: {e}"}
 
     total = time.perf_counter() - pipeline_start
     logger.info("─" * 40)
-    logger.info("🏁 Pipeline complete in %.2fs", total)
+    logger.info("Pipeline complete in %.2fs", total)
     logger.info("═" * 50)
 
     return result
@@ -141,21 +141,21 @@ def process_text_command(text_input: str, action_log=None, chat_context=None, ll
 
     pipeline_start = time.perf_counter()
     logger.info("═" * 50)
-    logger.info("🚀 Text Pipeline started")
+    logger.info("Text pipeline started")
     logger.info("   Text input: %s", text_input[:120])
 
     try:
         # --- Stage 2: Intent Classification ---
         logger.info("─" * 40)
-        logger.info("🧠 Stage 2: Intent Classification")
+        logger.info("Stage 2: Intent Classification")
         t0 = time.perf_counter()
         intent_array = classify_intent(result["transcript"], result["action_log"], llm_model)
         elapsed = time.perf_counter() - t0
-        logger.info("   ⏱  Classification took %.2fs", elapsed)
+        logger.info("   Classification took %.2fs", elapsed)
 
         # --- Stage 3: Tool Execution ---
         logger.info("─" * 40)
-        logger.info("⚡ Stage 3: Tool Execution (%d actions)", len(intent_array))
+        logger.info("Stage 3: Tool Execution (%d actions)", len(intent_array))
         for intent_obj in intent_array:
             action = intent_obj.get("intent", "unknown")
             
@@ -164,7 +164,7 @@ def process_text_command(text_input: str, action_log=None, chat_context=None, ll
                 result["pending_intents"].append(intent_obj)
                 continue
                 
-            logger.info("   ▶ Executing action: %s", action)
+            logger.info("   Executing action: %s", action)
             t0 = time.perf_counter()
             tool_res = dispatch(intent_obj, result["chat_context"], llm_model)
             elapsed = time.perf_counter() - t0
@@ -175,7 +175,7 @@ def process_text_command(text_input: str, action_log=None, chat_context=None, ll
                 "result": tool_res
             })
             _log_action(result["action_log"], intent_obj, result["transcript"])
-            logger.info("   ✅ Executed %s in %.2fs. Result preview: %s", action, elapsed, str(tool_res)[:100])
+            logger.info("   Executed %s in %.2fs. Result preview: %s", action, elapsed, str(tool_res)[:100])
             
         if result["pending_intents"]:
             result["requires_confirmation"] = True
@@ -192,15 +192,15 @@ def process_text_command(text_input: str, action_log=None, chat_context=None, ll
             result["confirmation_message"] = f"About to write {len(result['pending_intents'])} file(s): {joined_files}. Proceed?"
             
     except PipelineError as e:
-        logger.error("   ❌ Pipeline Error [%s]: %s", e.stage, e.message)
+        logger.error("   Pipeline Error [%s]: %s", e.stage, e.message)
         return {"error": True, "stage": e.stage, "message": e.message}
     except Exception as e:
-        logger.error("   ❌ Unhandled exception: %s", e, exc_info=True)
+        logger.error("   Unhandled exception: %s", e, exc_info=True)
         return {"error": True, "stage": "framework", "message": f"Unhandled error: {e}"}
 
     total = time.perf_counter() - pipeline_start
     logger.info("─" * 40)
-    logger.info("🏁 Text Pipeline complete in %.2fs", total)
+    logger.info("Text pipeline complete in %.2fs", total)
     logger.info("═" * 50)
 
     return result
@@ -215,12 +215,12 @@ def execute_intents(intent_array: list, action_log=None, chat_context=None, llm_
         "chat_context": chat_context or [],
     }
     logger.info("═" * 50)
-    logger.info("🚀 Executing Confirmed Intents (%d actions)", len(intent_array))
+    logger.info("Executing confirmed intents (%d actions)", len(intent_array))
     
     try:
         for intent_obj in intent_array:
             action = intent_obj.get("intent", "unknown")
-            logger.info("   ▶ Executing action: %s", action)
+            logger.info("   Executing action: %s", action)
             t0 = time.perf_counter()
             tool_res = dispatch(intent_obj, result["chat_context"], llm_model)
             elapsed = time.perf_counter() - t0
@@ -231,12 +231,12 @@ def execute_intents(intent_array: list, action_log=None, chat_context=None, llm_
                 "result": tool_res
             })
             _log_action(result["action_log"], intent_obj)
-            logger.info("   ✅ Executed %s in %.2fs", action, elapsed)
+            logger.info("   Executed %s in %.2fs", action, elapsed)
     except PipelineError as e:
-        logger.error("   ❌ Pipeline Error [%s]: %s", e.stage, e.message)
+        logger.error("   Pipeline Error [%s]: %s", e.stage, e.message)
         return {"error": True, "stage": e.stage, "message": e.message}
     except Exception as e:
-        logger.error("   ❌ Unhandled exception: %s", e, exc_info=True)
+        logger.error("   Unhandled exception: %s", e, exc_info=True)
         return {"error": True, "stage": "framework", "message": f"Unhandled error: {e}"}
         
     logger.info("═" * 50)

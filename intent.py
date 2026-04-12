@@ -146,10 +146,10 @@ def classify_intent(transcript: str, action_log=None, model: str = "gemma3:4b") 
         for item in result:
             _validate(item)
             
-        logger.info("   ✅ Intents parsed on first attempt: %d actions", len(result))
+        logger.info("   Intents parsed on first attempt: %d actions", len(result))
         return result
     except (json.JSONDecodeError, KeyError, ValueError) as e:
-        logger.warning("   ⚠️  First attempt failed (%s), retrying…", e)
+        logger.warning("   First attempt failed (%s), retrying...", e)
 
     # --- Retry with stricter prompt ---
     try:
@@ -175,10 +175,10 @@ def classify_intent(transcript: str, action_log=None, model: str = "gemma3:4b") 
         for item in result:
             _validate(item)
         
-        logger.info("   ✅ Intents parsed on retry: %d actions", len(result))
+        logger.info("   Intents parsed on retry: %d actions", len(result))
         return result
     except Exception as e:
-        logger.error("   ❌ Retry failed (%s). Routing to fallback.", e)
+        logger.error("   Retry failed (%s). Routing to fallback.", e)
         return [{"intent": "general_chat", "message": transcript}]
 
 

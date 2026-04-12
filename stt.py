@@ -17,14 +17,14 @@ from errors import PipelineError
 # Model loading (once, at import time)
 # ---------------------------------------------------------------------------
 
-logger.info("🔧 Loading faster-whisper model (large-v3-turbo, cuda, float16)…")
+logger.info("Loading faster-whisper model (large-v3-turbo, cuda, float16)...")
 _load_start = time.perf_counter()
 _model = WhisperModel(
     "large-v3-turbo",
     device="cuda",
     compute_type="float16",
 )
-logger.info("✅ Whisper model loaded in %.1fs", time.perf_counter() - _load_start)
+logger.info("Whisper model loaded in %.1fs", time.perf_counter() - _load_start)
 
 
 # ---------------------------------------------------------------------------

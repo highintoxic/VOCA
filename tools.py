@@ -64,24 +64,24 @@ def _chat(*args, **kwargs):
 
 def create_file(filename: str) -> str:
     """Create an empty file (or directory if name ends with '/') in output/."""
-    logger.info("   📁 create_file: %s", filename)
+    logger.info("   create_file: %s", filename)
     path = safe_path(filename)
 
     try:
         if filename.endswith("/"):
             path.mkdir(parents=True, exist_ok=True)
-            return f"📁 Created directory: {path.relative_to(Path(__file__).parent)}"
+            return f"Created directory: {path.relative_to(Path(__file__).parent)}"
         else:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.touch()
-            return f"📄 Created file: {path.relative_to(Path(__file__).parent)}"
+            return f"Created file: {path.relative_to(Path(__file__).parent)}"
     except OSError as e:
         raise PipelineError("tool", f"OS file permission error: {e}")
 
 
 def write_file(filename: str, content: str, mode: str = "overwrite", model: str = "gemma3:4b") -> str:
     """Write or edit text content in output/<filename>."""
-    logger.info("   📝 write_file: %s (%s, %d chars)", filename, mode, len(content or ""))
+    logger.info("   write_file: %s (%s, %d chars)", filename, mode, len(content or ""))
     path = safe_path(filename)
 
     try:
@@ -90,7 +90,7 @@ def write_file(filename: str, content: str, mode: str = "overwrite", model: str 
         if mode == "append":
             with path.open("a", encoding="utf-8") as f:
                 f.write(content or "")
-            return f"📝 Appended text to: {path.relative_to(Path(__file__).parent)}"
+            return f"Appended text to: {path.relative_to(Path(__file__).parent)}"
 
         if mode == "edit" and path.exists():
             original = path.read_text(encoding="utf-8")
@@ -122,18 +122,18 @@ def write_file(filename: str, content: str, mode: str = "overwrite", model: str 
                     lines = lines[1:]
                 updated = "\n".join(lines)
             path.write_text(updated, encoding="utf-8")
-            return f"📝 Edited text file: {path.relative_to(Path(__file__).parent)}"
+            return f"Edited text file: {path.relative_to(Path(__file__).parent)}"
 
         path.write_text(content or "", encoding="utf-8")
     except OSError as e:
         raise PipelineError("tool", f"OS file permission error: {e}")
 
-    return f"📝 Wrote text to: {path.relative_to(Path(__file__).parent)}"
+    return f"Wrote text to: {path.relative_to(Path(__file__).parent)}"
 
 
 def write_code(filename: str, language: str, description: str, chat_context: list, model: str) -> str:
     """Generate code via Ollama and write it to output/<filename>."""
-    logger.info("   💻 write_code: %s (%s) — %s", filename, language, description[:80])
+    logger.info("   write_code: %s (%s) - %s", filename, language, description[:80])
     path = safe_path(filename)
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -176,13 +176,13 @@ def write_code(filename: str, language: str, description: str, chat_context: lis
     while len(chat_context) > 20:
         chat_context.pop(0)
 
-    logger.info("   ✅ Code written to %s (%d chars)", path, len(code))
+    logger.info("   Code written to %s (%d chars)", path, len(code))
     return code
 
 
 def summarize(content: str, model: str) -> str:
     """Summarise the given content using Ollama."""
-    logger.info("   📄 summarize: %d chars of content", len(content))
+    logger.info("   summarize: %d chars of content", len(content))
     response = _chat(
         model=model,
         messages=[
@@ -201,7 +201,7 @@ def summarize(content: str, model: str) -> str:
 
 def general_chat(message: str, chat_context: list, model: str) -> str:
     """Handle general conversation that has no actionable intent."""
-    logger.info("   💬 general_chat: %s", message[:80])
+    logger.info("   general_chat: %s", message[:80])
     
     messages = [{"role": "system", "content": "You are a helpful voice assistant. Be concise and friendly."}]
     if chat_context:

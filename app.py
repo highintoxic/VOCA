@@ -52,12 +52,12 @@ setup_logging()
 logger = logging.getLogger(__name__)
 from fastapi.staticfiles import StaticFiles
 
-logger.info("🎙️  Voca — Voice AI Agent starting up…")
-logger.info("   Loading pipeline modules (this triggers model downloads)…")
+logger.info("Voca Voice AI Agent starting up...")
+logger.info("Loading pipeline modules (this triggers model downloads)...")
 
 from pipeline import run_pipeline
 
-logger.info("✅ All modules loaded. Server ready to accept requests.")
+logger.info("All modules loaded. Server ready to accept requests.")
 
 app = FastAPI(title="Voca — Voice AI Agent")
 
@@ -85,7 +85,7 @@ async def list_models():
             model_names = [{"name": m.get("name") or m.get("model")} for m in models_response.get("models", [])]
         return {"models": model_names}
     except Exception as e:
-        logger.error("❌ Error fetching models: %s", e)
+        logger.error("Error fetching models: %s", e)
         return {"error": True, "message": str(e), "models": []}
 
 
@@ -109,7 +109,7 @@ async def process_audio(
         llm_model = "gemma3:4b"
     # Save the uploaded file to a temp location
     suffix = os.path.splitext(audio.filename or ".wav")[1]
-    logger.info("📥 Received audio upload: %s (%s)", audio.filename, suffix)
+    logger.info("Received audio upload: %s (%s)", audio.filename, suffix)
     tmp = tempfile.NamedTemporaryFile(suffix=suffix, delete=False)
     try:
         content = await audio.read()
@@ -122,9 +122,9 @@ async def process_audio(
         t0 = time.perf_counter()
         result = run_pipeline(tmp.name, action_log, chat_context, llm_model=llm_model)
         elapsed = time.perf_counter() - t0
-        logger.info("📤 Returning result (total API time: %.2fs)", elapsed)
+        logger.info("Returning result (total API time: %.2fs)", elapsed)
     except Exception as e:
-        logger.error("❌ Unhandled error in /api/process: %s", e, exc_info=True)
+        logger.error("Unhandled error in /api/process: %s", e, exc_info=True)
         return {
             "error": True,
             "stage": "api",
@@ -154,10 +154,10 @@ async def process_text_api(request: TextRequest):
         t0 = time.perf_counter()
         result = process_text_command(request.text, request.action_log, request.chat_context, request.llm_model)
         elapsed = time.perf_counter() - t0
-        logger.info("📤 Returning result (total API time: %.2fs)", elapsed)
+        logger.info("Returning result (total API time: %.2fs)", elapsed)
         return result
     except Exception as e:
-        logger.error("❌ Unhandled error in /api/process_text: %s", e, exc_info=True)
+        logger.error("Unhandled error in /api/process_text: %s", e, exc_info=True)
         return {
             "error": True,
             "stage": "api",
@@ -180,10 +180,10 @@ async def confirm_intents_api(request: ConfirmRequest):
         t0 = time.perf_counter()
         result = execute_intents(request.intents, request.action_log, request.chat_context, request.llm_model)
         elapsed = time.perf_counter() - t0
-        logger.info("📤 Returning confirmed execution result (total API time: %.2fs)", elapsed)
+        logger.info("Returning confirmed execution result (total API time: %.2fs)", elapsed)
         return result
     except Exception as e:
-        logger.error("❌ Unhandled error in /api/confirm_intents: %s", e, exc_info=True)
+        logger.error("Unhandled error in /api/confirm_intents: %s", e, exc_info=True)
         return {
             "error": True,
             "stage": "api",
