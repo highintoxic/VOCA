@@ -79,6 +79,58 @@ def create_file(filename: str) -> str:
         raise PipelineError("tool", f"OS file permission error: {e}")
 
 
+def write_file(filename: str, content: str, mode: str = "overwrite", model: str = "gemma3:4b") -> str:
+    """Write or edit text content in output/<filename>."""
+    logger.info("   📝 write_file: %s (%s, %d chars)", filename, mode, len(content or ""))
+    path = safe_path(filename)
+
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+
+        if mode == "append":
+            with path.open("a", encoding="utf-8") as f:
+                f.write(content or "")
+            return f"📝 Appended text to: {path.relative_to(Path(__file__).parent)}"
+
+        if mode == "edit" and path.exists():
+            original = path.read_text(encoding="utf-8")
+            response = _chat(
+                model=model,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are a precise text editor. Apply the user's edit instruction to the provided file content. "
+                            "Return only the full updated file content. No markdown fences."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": (
+                            f"Current file content:\n\n{original}\n\n"
+                            f"Edit instruction:\n{content}"
+                        ),
+                    },
+                ],
+            )
+            updated = response["message"]["content"]
+            if updated.startswith("```"):
+                lines = updated.split("\n")
+                if lines[-1].strip() == "```":
+                    lines = lines[1:-1]
+                else:
+                    lines = lines[1:]
+                updated = "\n".join(lines)
+            path.write_text(updated, encoding="utf-8")
+            return f"📝 Edited text file: {path.relative_to(Path(__file__).parent)}"
+
+        path.write_text(content or "", encoding="utf-8")
+    except OSError as e:
+        raise PipelineError("tool", f"OS file permission error: {e}")
+
+    return f"📝 Wrote text to: {path.relative_to(Path(__file__).parent)}"
+
+
 def write_code(filename: str, language: str, description: str, chat_context: list, model: str) -> str:
     """Generate code via Ollama and write it to output/<filename>."""
     logger.info("   💻 write_code: %s (%s) — %s", filename, language, description[:80])
@@ -176,6 +228,9 @@ def general_chat(message: str, chat_context: list, model: str) -> str:
 
 _TOOL_MAP = {
     "create_file": lambda obj, ctx, model: create_file(obj["filename"]),
+    "write_file": lambda obj, ctx, model: write_file(
+        obj["filename"], obj["content"], obj.get("mode", "overwrite"), model
+    ),
     "write_code": lambda obj, ctx, model: write_code(
         obj["filename"], obj["language"], obj["description"], ctx, model
     ),

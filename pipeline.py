@@ -79,7 +79,7 @@ def run_pipeline(audio_input, action_log=None, chat_context=None, llm_model: str
         for intent_obj in intent_array:
             action = intent_obj.get("intent", "unknown")
             
-            if action in {"create_file", "write_code"}:
+            if action in {"create_file", "write_file", "write_code"}:
                 logger.info("   ⏸ Holding action for confirmation: %s", action)
                 result["pending_intents"].append(intent_obj)
                 continue
@@ -104,6 +104,8 @@ def run_pipeline(audio_input, action_log=None, chat_context=None, llm_model: str
                 fname = item.get("filename", "unknown_file")
                 if item.get("intent") == "create_file":
                     parts.append(f"{fname} (empty)")
+                elif item.get("intent") == "write_file":
+                    parts.append(f"{fname} (text {item.get('mode', 'overwrite')})")
                 else:
                     parts.append(f"{fname} ({item.get('language', 'code')} code)")
             joined_files = ", ".join(parts)
@@ -157,7 +159,7 @@ def process_text_command(text_input: str, action_log=None, chat_context=None, ll
         for intent_obj in intent_array:
             action = intent_obj.get("intent", "unknown")
             
-            if action in {"create_file", "write_code"}:
+            if action in {"create_file", "write_file", "write_code"}:
                 logger.info("   ⏸ Holding action for confirmation: %s", action)
                 result["pending_intents"].append(intent_obj)
                 continue
@@ -182,6 +184,8 @@ def process_text_command(text_input: str, action_log=None, chat_context=None, ll
                 fname = item.get("filename", "unknown_file")
                 if item.get("intent") == "create_file":
                     parts.append(f"{fname} (empty)")
+                elif item.get("intent") == "write_file":
+                    parts.append(f"{fname} (text {item.get('mode', 'overwrite')})")
                 else:
                     parts.append(f"{fname} ({item.get('language', 'code')} code)")
             joined_files = ", ".join(parts)

@@ -230,12 +230,18 @@ html.dark-mode .header {
 }
 
 .message.user {
-  grid-template-columns: 1fr 32px;
-  direction: rtl;
+  display: flex;
+  gap: 12px;
+  padding: 20px 0;
+  justify-content: flex-end;
 }
 
 .message.user > * {
-  direction: ltr;
+  display: flex;
+}
+
+.message.user .avatar {
+  order: 2;
 }
 
 .message.agent { align-self: stretch; }
@@ -277,7 +283,7 @@ html.dark-mode .header {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  min-width: 0;
+  width: fit-content;
 }
 
 .role-title {
@@ -302,10 +308,7 @@ html.dark-mode .header {
 }
 
 .message.user .bubble-content {
-  background: var(--accent-dim);
-  border: 1px solid rgba(44, 93, 255, 0.18);
-  border-radius: 2px;
-  padding: 12px 14px;
+  color: var(--accent);
 }
 
 .bubble-content p { margin-bottom: 10px; }
@@ -644,6 +647,11 @@ html.dark-mode .session-history-wrapper {
 }
 .status-badge.success { background: rgba(26, 102, 68, 0.10); color: var(--success); }
 .status-badge.error   { background: rgba(184, 50, 50, 0.10); color: var(--danger); }
+
+.user-message {
+  border: 1px solid var(--border);
+  border-radius: 2px;
+}
 
 /* ── Responsive ──────────────────────────────────────────────────────────── */
 @media (max-width: 768px) {

@@ -43,7 +43,56 @@
 		themeToggle.addEventListener("click", toggleTheme);
 	}
 
-	window.addEventListener("DOMContentLoaded", async () => {
+	// --- State --------------------------------------------------------------
+	let pendingIntents = [];
+	let isAwaitingConfirmation = false;
+	let actionLogState = [];
+	let chatContextState = [];
+	let mediaRecorder = null;
+	let audioChunks = [];
+	let isRecording = false;
+	let recordingInterval = null;
+	let recordingSeconds = 0;
+	let currentAudioBlob = null;
+	let currentFileName = "recording.wav";
+
+	// --- LocalStorage Management -----------------------------------------------
+	const STORAGE_KEY = "voca_chat_messages";
+
+	function saveMessageToLocalStorage(message) {
+		try {
+			const messages = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+			messages.push({
+				...message,
+				id: Date.now(),
+			});
+			localStorage.setItem(STORAGE_KEY, JSON.stringify(messages));
+		} catch (err) {
+			console.error("Error saving message to localStorage:", err);
+		}
+	}
+
+	function loadMessagesFromLocalStorage() {
+		try {
+			const messages = JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]");
+
+			return messages;
+		} catch (err) {
+			console.error("Error loading messages from localStorage:", err);
+			return [];
+		}
+	}
+
+	function clearLocalStorage() {
+		try {
+			localStorage.removeItem(STORAGE_KEY);
+		} catch (err) {
+			console.error("Error clearing localStorage:", err);
+		}
+	}
+
+	// Load chat on page load
+	async function initializeChat() {
 		initializeTheme();
 
 		if (modelSelect) {
@@ -68,22 +117,28 @@
 				modelSelect.innerHTML = `<option value="gemma3:4b">gemma3:4b</option>`;
 			}
 		}
-	});
 
-	// --- State --------------------------------------------------------------
-	let pendingIntents = [];
-	let isAwaitingConfirmation = false;
-	let actionLogState = [];
-	let chatContextState = [];
-	let mediaRecorder = null;
-	let audioChunks = [];
-	let isRecording = false;
-	let recordingInterval = null;
-	let recordingSeconds = 0;
-	let currentAudioBlob = null;
-	let currentFileName = "recording.wav";
+		// Load saved messages from localStorage
+		const savedMessages = loadMessagesFromLocalStorage();
 
-	// --- Microphone Recording -----------------------------------------------
+		// Restore messages to chat history
+		savedMessages.forEach((msg) => {
+			if (msg.type === "user") {
+				appendUserMessageDirect(msg.content, msg.isLowConfidence);
+			} else if (msg.type === "agent" && msg.content) {
+				appendAgentMessageDirect(msg.content);
+			}
+		});
+
+		// Messages restored silently
+	}
+
+	// Call initializeChat immediately if document is already ready
+	if (document.readyState === "loading") {
+		window.addEventListener("DOMContentLoaded", initializeChat);
+	} else {
+		initializeChat();
+	}
 	micBtn.addEventListener("click", async () => {
 		if (isAwaitingConfirmation || micBtn.disabled) return;
 		if (isRecording) {
@@ -375,6 +430,18 @@
 	}
 
 	function appendUserMessage(text, isLowConfidence = false) {
+		appendUserMessageDirect(text, isLowConfidence);
+
+		// Save to localStorage
+		saveMessageToLocalStorage({
+			type: "user",
+			content: text,
+			isLowConfidence: isLowConfidence,
+			timestamp: new Date().toISOString(),
+		});
+	}
+
+	function appendUserMessageDirect(text, isLowConfidence = false) {
 		const msgDiv = document.createElement("div");
 		msgDiv.className = "message user";
 		let warning = "";
@@ -400,6 +467,17 @@
 	}
 
 	function appendAgentMessage(data) {
+		appendAgentMessageDirect(data);
+
+		// Save to localStorage
+		saveMessageToLocalStorage({
+			type: "agent",
+			content: data,
+			timestamp: new Date().toISOString(),
+		});
+	}
+
+	function appendAgentMessageDirect(data) {
 		const msgDiv = document.createElement("div");
 		msgDiv.className = "message agent";
 
@@ -423,6 +501,7 @@
 		// Determine title block for Action
 		const actionIcons = {
 			create_file: "📁 Create File",
+			write_file: "📝 Write File",
 			write_code: "💻 Code Generation",
 			summarize: "📄 Summary",
 			general_chat: "💬 General Chat",
@@ -599,11 +678,21 @@
 	const historyTbody = document.getElementById("history-tbody");
 
 	if (clearSessionBtn) {
-		clearSessionBtn.addEventListener("click", (e) => {
+		clearSessionBtn.addEventListener("click", async (e) => {
 			e.preventDefault();
 			e.stopPropagation();
 			actionLogState = [];
 			chatContextState = [];
+
+			// Clear localStorage
+			clearLocalStorage();
+
+			// Clear chat history from DOM (keep the start message)
+			const messages = chatHistory.querySelectorAll(
+				".message:not(.start-message)",
+			);
+			messages.forEach((msg) => msg.remove());
+
 			renderHistoryPanel();
 		});
 	}
